@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>テトリス</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="game-shell">
+      <div class="panel">
+        <h1>テトリス</h1>
+        <div class="stats">
+          <div><span>スコア</span><strong id="score">0</strong></div>
+          <div><span>ライン</span><strong id="lines">0</strong></div>
+          <div><span>レベル</span><strong id="level">1</strong></div>
+        </div>
+        <div class="next-box">
+          <h2>Next</h2>
+          <canvas id="nextCanvas" width="120" height="120"></canvas>
+        </div>
+        <button id="startBtn">スタート</button>
+      </div>
+
+      <canvas id="gameCanvas" width="300" height="600" aria-label="テトリスのゲーム画面"></canvas>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
