@@ -4,7 +4,7 @@
 
 ## GitHub Pages での公開
 
-リポジトリの `main` ブランチに変更を push すると、GitHub Actions がこのフォルダーの静的ファイルを GitHub Pages に公開します。初回は GitHub リポジトリの **Settings > Pages** で公開元を **GitHub Actions** に設定してください。公開 URL は `https://25yc0102-png.github.io/sotsugyo-project/` です。
+リポジトリの `main` ブランチに変更を push すると、GitHub Actions がこのフォルダーの静的ファイルを GitHub Pages に公開します。初回は GitHub リポジトリの **Settings > Pages** で公開元を **GitHub Actions** に設定してください。Pages を有効にする前のデプロイが失敗していた場合は、設定後に GitHub Actions からそのワークフローを再実行してください。公開 URL は `https://25yc0102-png.github.io/sotsugyo-project/` です。
 
 GitHub Pages で公開できるのは画面の静的ファイルです。店舗検索には API キーを安全に扱うサーバーが必要なため、Pages 上では検索できません。検索機能を使う場合は、以下の手順でローカルサーバーを起動してください。API キーを HTML や JavaScript に埋め込んで公開しないでください。
 
