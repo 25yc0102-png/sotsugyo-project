@@ -2,6 +2,12 @@
 
 質問への回答に合わせて近くのお店を3店抽選するローカル Web アプリです。金属色の3リールに店名・ジャンルを表示し、停止後は同じ3店の詳細を下に表示します。レバーを引くと別の候補を抽選します。
 
+## GitHub Pages での公開
+
+リポジトリの `main` ブランチに変更を push すると、GitHub Actions がこのフォルダーの静的ファイルを GitHub Pages に公開します。初回は GitHub リポジトリの **Settings > Pages** で公開元を **GitHub Actions** に設定してください。公開 URL は `https://25yc0102-png.github.io/sotsugyo-project/` です。
+
+GitHub Pages で公開できるのは画面の静的ファイルです。店舗検索には API キーを安全に扱うサーバーが必要なため、Pages 上では検索できません。検索機能を使う場合は、以下の手順でローカルサーバーを起動してください。API キーを HTML や JavaScript に埋め込んで公開しないでください。
+
 ## 起動方法
 
 1. PowerShell でこのフォルダーへ移動し、`Set-ExecutionPolicy -Scope Process Bypass -Force; ./server.ps1` を実行します。

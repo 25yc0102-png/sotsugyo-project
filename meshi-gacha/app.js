@@ -103,6 +103,15 @@ function startGacha() {
 }
 
 async function checkApiStatus() {
+  if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    apiStatus.textContent = "検索サーバー未接続";
+    locationStatus.textContent = window.location.hostname.endsWith(".github.io")
+      ? "GitHub Pagesでは店舗検索を利用できません。検索にはローカルサーバーが必要です。"
+      : "このページでは店舗検索を利用できません。検索にはローカルサーバーが必要です。";
+    updateSearchControls();
+    return;
+  }
+
   try {
     const response = await fetch("/api/status", { cache: "no-store" });
     const status = await response.json();
