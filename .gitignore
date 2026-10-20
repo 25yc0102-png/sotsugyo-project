@@ -1,0 +1,23 @@
+# Dependencies
+**/node_modules/
+
+# Frontend build output
+/frontend/dist/
+
+# Local environment variables and secrets
+.env
+.env/
+.env.*
+!.env.example
+**/.env
+**/.env/
+**/.env.*
+!**/.env.example
+
+# Python
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+
+# Local SQLite database
+/backend/*.db

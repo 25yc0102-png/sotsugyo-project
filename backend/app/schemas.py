@@ -58,6 +58,11 @@ class SearchResponse(BaseModel):
     relaxed: bool
     remaining: int = Field(description="未提示の候補数（今回提示した分を除く）")
     message: str
+    log_id: str | None = Field(default=None, description="検索ログのID。店舗決定時に使う（記録に失敗した場合は null）")
+
+
+class SelectionRequest(BaseModel):
+    shop_id: str = Field(max_length=32)
 
 
 class Genre(BaseModel):
