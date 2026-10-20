@@ -1,0 +1,520 @@
+User: 卒業制作でwebアプリケーションを制作しています。二人で分担しながら作業しています。
+
+開発の経験はなく、完全にAIまかせに制作しています。
+
+条件を入力したらおすすめの店を提示してくれるサービスを作りたいです。
+
+どのように開発を進めていけばいいでしょうか
+Model: # AIを活用したWeb開発の進め方
+
+開発経験がなくてもAIを上手く活用すれば制作できます！段階的に進めていきましょう。
+
+---
+
+## まず決めるべきこと
+
+### 1. 二人の役割分担
+
+```
+例）
+Aさん：フロントエンド（見た目・画面）
+Bさん：バックエンド（データ処理・API）
+```
+
+### 2. 使う技術を固定する
+
+**初心者におすすめの構成：**
+
+| 部分 | 技術 | 理由 |
+|------|------|------|
+| フロントエンド | Next.js（React） | 情報が多い、AIが得意 |
+| バックエンド | Next.js API Routes | 1つで完結 |
+| データベース | Supabase | 無料、簡単 |
+| お店データ | ホットペッパーAPI | 無料で使える |
+
+---
+
+## 開発の流れ（6ステップ）
+
+### Step 1: 環境構築（1-2日）
+```
+やること：
+- Node.jsをインストール
+- VS Codeをインストール
+- GitHubアカウント作成
+- プロジェクト作成
+```
+
+**AIへの質問例：**
+> 「Next.js 14のプロジェクトを作成する手順を、完全初心者向けに教えてください」
+
+---
+
+### Step 2: 画面設計（2-3日）
+```
+決めること：
+- 何画面必要か
+- どんな入力項目があるか
+- 結果をどう表示するか
+```
+
+**最小構成の例：**
+```
+1. トップページ（条件入力フォーム）
+   - エリア選択
+   - ジャンル選択
+   - 予算
+   - 検索ボタン
+
+2. 結果ページ（お店一覧）
+   - 店名、写真、評価、住所
+```
+
+---
+
+### Step 3: フロントエンド作成（1週間）
+
+**AIへの質問例：**
+> 「Next.jsで飲食店検索フォームを作りたいです。エリア、ジャンル、予算を選択できるフォームのコードを書いてください」
+
+---
+
+### Step 4: API連携（1週間）
+
+**ホットペッパーAPIの場合：**
+
+```javascript
+// 例：お店検索のAPI呼び出し
+const searchShops = async (area, genre, budget) => {
+  const response = await fetch(
+    `https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?key=${API_KEY}&large_area=${area}&genre=${genre}&budget=${budget}&format=json`
+  );
+  return response.json();
+};
+```
+
+**AIへの質問例：**
+> 「ホットペッパーAPIを使って、Next.jsで店舗検索機能を実装するコード全体を書いてください」
+
+---
+
+### Step 5: 結合・テスト（3-5日）
+```
+- AさんBさんのコードを合わせる
+- 動作確認
+- バグ修正
+```
+
+---
+
+### Step 6: デプロイ（1-2日）
+
+**Vercelがおすすめ：**
+- 無料
+- GitHubと連携で自動デプロイ
+- Next.jsと相性抜群
+
+---
+
+## AIに質問するコツ
+
+### ❌ 悪い例
+```
+「お店検索アプリ作って」
+```
+
+### ✅ 良い例
+```
+「Next.js 14 (App Router) で、
+ホットペッパーAPIを使った飲食店検索アプリを作りたいです。
+
+【今やりたいこと】
+- エリア、ジャンル、予算を選択するフォームの作成
+
+【環境】
+- Next.js 14.0
+- TypeScript使用
+- Tailwind CSS使用
+
+フォームのコンポーネントを書いてください」
+```
+
+---
+
+## すぐやるべきアクション
+
+```
+1. □ 二人で役割を決める
+2. □ 使う技術を決める（上記おすすめでOK）
+3. □ ホットペッパーAPIのキーを取得する
+   https://webservice.recruit.co.jp/register/
+4. □ 画面の簡単なスケッチを描く
+5. □ 環境構築を始める
+```
+
+---
+
+何か具体的に詰まっている部分があれば教えてください！
+その部分のコードや手順を詳しく説明します。
+User: 私はバックエンドを担当します。fastapiを使う予定です。
+User: もう一人はフロントエンドですが彼にどう指示すればいいですか？
+User: 両方の進め方を教えてください
+Model: # フロントエンド＆バックエンド 開発ガイド
+
+FastAPI + フロントエンドの構成で進めましょう！
+
+---
+
+## まず二人で決めること（30分で決める）
+
+### 1. API仕様を先に決める
+
+これが二人の「契約書」になります。
+
+```
+【検索API】
+URL: POST /api/shops/search
+送るデータ: { area: "東京", genre: "居酒屋", budget: "3000" }
+返ってくるデータ: { shops: [{name: "店名", address: "住所", ...}] }
+```
+
+### 2. フロントエンドの技術を決める
+
+| 選択肢 | 難易度 | おすすめ度 |
+|--------|--------|-----------|
+| **React (Vite)** | ★★☆ | ◎ 情報が多い |
+| Next.js | ★★★ | ○ 高機能だが複雑 |
+| Vue.js | ★★☆ | ○ 書きやすい |
+| 素のHTML/JS | ★☆☆ | △ 規模が大きいと辛い |
+
+**→ React (Vite) をおすすめします**
+
+---
+
+## フロントエンド担当への指示書
+
+以下をそのまま渡してください👇
+
+---
+
+### 📋 フロントエンド担当へ
+
+#### やること一覧
+
+```
+Week 1: 環境構築 & 画面作成
+Week 2: API連携
+Week 3: 調整・デバッグ
+```
+
+#### Step 1: 環境構築（1日目）
+
+**AIに聞くプロンプト：**
+```
+React + Vite + TypeScript でプロジェクトを作成する手順を
+完全初心者向けに教えてください。
+
+以下も含めてください：
+- Node.jsのインストール確認方法
+- VS Codeの推奨拡張機能
+- Tailwind CSSの導入
+```
+
+#### Step 2: 画面を作る（2-5日目）
+
+**作る画面：**
+```
+1. 検索ページ（トップページ）
+   - エリア選択（プルダウン）
+   - ジャンル選択（プルダウン）
+   - 予算入力
+   - 検索ボタン
+
+2. 結果表示（同じページ or 別ページ）
+   - 店舗カード一覧
+   - 店名、画像、住所、評価など
+```
+
+**AIに聞くプロンプト：**
+```
+React + TypeScript + Tailwind CSSで
+飲食店検索フォームを作りたいです。
+
+【入力項目】
+- エリア選択（セレクトボックス）
+- ジャンル選択（セレクトボックス）
+- 予算（数値入力）
+- 検索ボタン
+
+コンポーネントのコードを書いてください。
+useState使用、送信時にconsole.logで値を表示。
+```
+
+#### Step 3: API連携（6-10日目）
+
+バックエンドが完成したら接続します。
+
+**AIに聞くプロンプト：**
+```
+Reactで以下のAPIを呼び出すコードを書いてください。
+
+【API仕様】
+URL: http://localhost:8000/api/shops/search
+メソッド: POST
+リクエストボディ:
+{
+  "area": "tokyo",
+  "genre": "izakaya",
+  "budget_min": 2000,
+  "budget_max": 5000
+}
+
+レスポンス:
+{
+  "shops": [
+    {
+      "id": "1",
+      "name": "居酒屋ABC",
+      "address": "東京都渋谷区...",
+      "image_url": "https://...",
+      "rating": 4.2
+    }
+  ]
+}
+
+fetchを使用、ローディング状態とエラー処理も含めてください。
+```
+
+---
+
+## あなた（バックエンド）の進め方
+
+### Step 1: 環境構築（1日目）
+
+```bash
+# プロジェクト作成
+mkdir shop-search-api
+cd shop-search-api
+
+# 仮想環境作成
+python -m venv venv
+source venv/bin/activate  # Mac/Linux
+venv\Scripts\activate     # Windows
+
+# パッケージインストール
+pip install fastapi uvicorn requests python-dotenv
+```
+
+### Step 2: 基本構造を作る（2日目）
+
+```
+shop-search-api/
+├── main.py           # メインファイル
+├── routers/
+│   └── shops.py      # 店舗検索API
+├── services/
+│   └── hotpepper.py  # ホットペッパーAPI呼び出し
+├── schemas/
+│   └── shop.py       # データ型定義
+├── .env              # APIキー保存
+└── requirements.txt
+```
+
+### Step 3: コードを書く（3-7日目）
+
+**main.py**
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import shops
+
+app = FastAPI(title="お店検索API")
+
+# CORS設定（フロントエンドからアクセス許可）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Viteのデフォルトポート
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(shops.router, prefix="/api")
+
+@app.get("/")
+def root():
+    return {"message": "お店検索API"}
+```
+
+**schemas/shop.py**
+```python
+from pydantic import BaseModel
+from typing import Optional
+
+class SearchRequest(BaseModel):
+    area: str
+    genre: Optional[str] = None
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+
+class Shop(BaseModel):
+    id: str
+    name: str
+    address: str
+    image_url: Optional[str] = None
+    rating: Optional[float] = None
+    budget: Optional[str] = None
+    access: Optional[str] = None
+
+class SearchResponse(BaseModel):
+    shops: list[Shop]
+    total_count: int
+```
+
+**routers/shops.py**
+```python
+from fastapi import APIRouter, HTTPException
+from schemas.shop import SearchRequest, SearchResponse
+from services.hotpepper import search_shops
+
+router = APIRouter()
+
+@router.post("/shops/search", response_model=SearchResponse)
+async def search(request: SearchRequest):
+    try:
+        result = await search_shops(
+            area=request.area,
+            genre=request.genre,
+            budget_min=request.budget_min,
+            budget_max=request.budget_max
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+**services/hotpepper.py**
+```python
+import os
+import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("HOTPEPPER_API_KEY")
+BASE_URL = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/"
+
+# エリアコードのマッピング
+AREA_CODES = {
+    "tokyo": "Z011",
+    "osaka": "Z023",
+    "kyoto": "Z025",
+    # 必要に応じて追加
+}
+
+async def search_shops(area: str, genre: str = None, budget_min: int = None, budget_max: int = None):
+    params = {
+        "key": API_KEY,
+        "format": "json",
+        "count": 20,
+    }
+    
+    # エリア設定
+    if area in AREA_CODES:
+        params["large_area"] = AREA_CODES[area]
+    
+    # ジャンル設定
+    if genre:
+        params["genre"] = genre
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(BASE_URL, params=params)
+        data = response.json()
+    
+    shops = []
+    for shop_data in data.get("results", {}).get("shop", []):
+        shops.append({
+            "id": shop_data.get("id"),
+            "name": shop_data.get("name"),
+            "address": shop_data.get("address"),
+            "image_url": shop_data.get("photo", {}).get("pc", {}).get("l"),
+            "rating": None,  # ホットペッパーは評価なし
+            "budget": shop_data.get("budget", {}).get("average"),
+            "access": shop_data.get("access"),
+        })
+    
+    return {
+        "shops": shops,
+        "total_count": len(shops)
+    }
+```
+
+**.env**
+```
+HOTPEPPER_API_KEY=あなたのAPIキー
+```
+
+### Step 4: 起動して確認
+
+```bash
+uvicorn main:app --reload
+```
+
+**確認方法：**
+- http://localhost:8000 にアクセス
+- http://localhost:8000/docs で自動生成されたAPIドキュメント確認
+
+---
+
+## 二人の連携スケジュール
+
+```
+【Week 1】
+月: 各自環境構築
+火: バック→API雛形作成 / フロント→画面作成開始
+水: バック→ホットペッパー連携 / フロント→フォーム完成
+木: バック→APIテスト / フロント→結果表示画面
+金: 合流してAPI仕様の確認・調整
+
+【Week 2】
+月-水: フロントエンドとバックエンドを接続
+木-金: バグ修正、デザイン調整
+
+【Week 3】
+デプロイ、ドキュメント作成、発表準備
+```
+
+---
+
+## 毎日の連絡で共有すること
+
+```
+1. 今日やったこと
+2. 困っていること
+3. 明日やること
+```
+
+GitHubで進捗を共有できるとベストです。
+
+---
+
+## 今すぐやること
+
+**あなた（バックエンド）：**
+```
+□ Python環境の確認（python --version）
+□ ホットペッパーAPIキーの取得
+□ 上記のフォルダ構成でプロジェクト作成
+□ main.pyを作成して起動確認
+```
+
+**フロントエンド担当：**
+```
+□ Node.js環境の確認（node --version）
+□ Vite + Reactプロジェクト作成
+□ 検索フォームの画面作成開始
+```
+
+---
+
+何か詰まったら、エラーメッセージと一緒に聞いてください！
