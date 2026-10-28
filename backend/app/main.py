@@ -4,10 +4,12 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -16,8 +18,15 @@ from .config import get_allowed_origins, get_api_key
 from .db import SearchLog, create_engine, create_tables, get_database_url
 from .geocode import GeocodeError, geocode
 from .hotpepper import HotPepperClient, HotPepperError
-from .schemas import Genre, SearchRequest, SearchResponse, SelectionRequest
-from .search import search_shops
+from .schemas import (
+    FrontendSearchRequest,
+    FrontendSearchResponse,
+    Genre,
+    SearchRequest,
+    SearchResponse,
+    SelectionRequest,
+)
+from .search import search_frontend_shops, search_shops
 
 JST = timezone(timedelta(hours=9))
 logger = logging.getLogger(__name__)
@@ -30,7 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.sessions = async_sessionmaker(engine, expire_on_commit=False)
     async with httpx.AsyncClient(headers={"User-Agent": "meshi-gacha/0.1"}) as http:
         app.state.http = http
-        app.state.hotpepper = HotPepperClient(get_api_key(), http)
+        api_key = get_api_key()
+        app.state.hotpepper = HotPepperClient(api_key, http) if api_key else None
         yield
     await engine.dispose()
 
@@ -49,7 +59,13 @@ def get_http(request: Request) -> httpx.AsyncClient:
 
 
 def get_hotpepper(request: Request) -> HotPepperClient:
-    return request.app.state.hotpepper
+    client = request.app.state.hotpepper
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="検索APIキーが未設定です。HOTPEPPER_API_KEYを設定してください。",
+        )
+    return client
 
 
 def get_now() -> datetime:
@@ -88,7 +104,10 @@ async def save_log(session: AsyncSession, req: SearchRequest, res: SearchRespons
 
 @app.get("/api/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "search_configured": "true" if app.state.hotpepper else "false",
+    }
 
 
 @app.get("/api/genres")
@@ -119,6 +138,26 @@ async def search(
     return res
 
 
+@app.post("/api/shops/search", response_model=FrontendSearchResponse)
+async def search_for_frontend(
+    req: FrontendSearchRequest,
+    http: httpx.AsyncClient = Depends(get_http),
+    hotpepper: HotPepperClient = Depends(get_hotpepper),
+    now: datetime = Depends(get_now),
+) -> FrontendSearchResponse:
+    if req.lat is not None and req.lng is not None:
+        lat, lng = req.lat, req.lng
+    else:
+        try:
+            lat, lng = await geocode(http, req.place or "")
+        except GeocodeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        return await search_frontend_shops(hotpepper, req, lat, lng, now)
+    except HotPepperError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @app.post("/api/search-logs/{log_id}/selection", status_code=204)
 async def select_shop(
     log_id: str,
@@ -135,3 +174,7 @@ async def select_shop(
     log.selected_shop_id = body.shop_id
     log.selected_at = now.astimezone(timezone.utc)
     await session.commit()
+
+
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "meshi-gacha"
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

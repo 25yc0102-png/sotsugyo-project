@@ -1,20 +1,46 @@
 # めしガチャ API（FastAPI）
 
-[基本設計書改定](../基本設計書改定.md) の店舗検索（3.2～3.5）を担うAPIサーバーです。
+Vue 3 の [meshi-gacha](../meshi-gacha/) と連携する店舗検索APIです。FastAPIからHot PepperグルメAPIを呼び出すため、APIキーをブラウザーへ渡しません。
 
 ## 起動
 
 ```powershell
-cd backend
+cd sotsugyo-project\backend
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
+$env:HOTPEPPER_API_KEY = "取得したHot Pepper APIキー"
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
 
-APIキーは環境変数 `HOTPEPPER_API_KEY`、またはリポジトリ直下の `.env/hotpepper_api` から読み込みます。
-CORSで許可するオリジンは `ALLOWED_ORIGINS`（カンマ区切り、既定は Vite 開発サーバー）で変更できます。
+環境変数は起動したPowerShellのプロセス内だけで有効です。APIキーをソースコードやVue側へ記載したり、Gitへコミットしたりしないでください。キーが未設定でも画面とAPIサーバーは起動しますが、店舗検索APIは`503`を返します。
 
-APIドキュメントは http://localhost:8000/docs で確認できます。
+FastAPIはVue画面も配信するため、起動後に http://127.0.0.1:8000/ を開くと画面とAPIを同じオリジンで確認できます。APIドキュメントは http://127.0.0.1:8000/docs です。
+
+## バックエンド単体で試す
+
+フロントエンドを操作せず、Swagger UI（ http://127.0.0.1:8000/docs ）から`POST /api/shops/search`を選び、リクエスト例を入力して実行できます。PowerShellから試す場合は、サーバーを起動したまま別のウィンドウで実行します。
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+
+$body = @{
+  genre = "izakaya"
+  budget = "under3000"
+  rangeMeters = 1000
+  moods = @("calm")
+  cuisines = @("yakitori")
+  lat = 35.681236
+  lng = 139.767125
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/shops/search `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+この検索はHot PepperグルメAPIへ実際に問い合わせます。`lat`・`lng`を変更すると検索地点を変えられます。入力値の検証テストなど、外部APIを呼ばない自動テストは下記の`pytest`で実行できます。
 
 ## エンドポイント
 
@@ -22,8 +48,31 @@ APIドキュメントは http://localhost:8000/docs で確認できます。
 | --- | --- | --- |
 | GET | `/api/health` | 稼働確認 |
 | GET | `/api/genres` | 指定できるジャンルの一覧 |
+| POST | `/api/shops/search` | Vue画面用の店舗検索 |
 | POST | `/api/search` | 店舗検索・シャッフル（検索ログを記録） |
 | POST | `/api/search-logs/{log_id}/selection` | 利用者が決定した店舗を記録 |
+
+Vue画面用の`/api/shops/search`リクエスト例：
+
+```json
+{
+  "genre": "izakaya",
+  "budget": "under3000",
+  "rangeMeters": 1000,
+  "moods": ["calm"],
+  "cuisines": ["yakitori"],
+  "lat": 35.681236,
+  "lng": 139.767125
+}
+```
+
+- `genre`：`izakaya`、`ramen`、`cafe`
+- `budget`：`under3000`、`3001to5000`、`5001to7000`、`any`
+- `rangeMeters`：`500`、`1000`、`2000`、`3000`
+- 検索場所は`lat`と`lng`の組、または`place`（住所・駅名）で指定
+- `moods`・`cuisines`は候補の優先順位に使用します。APIの店舗紹介文などから判定できない好みを除外条件にはしません。
+
+成功時はVue画面でそのまま使える`shops`配列を返します。現在地が取得できない場合は住所・駅名を画面へ入力できます。地名はPhotonで座標に変換されます。
 
 `/api/search` のリクエスト例：
 
