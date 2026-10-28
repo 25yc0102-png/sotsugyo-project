@@ -1,4 +1,4 @@
-# まちメシ 卒業制作サンプル
+# めしガチャ
 
 このリポジトリには、API を利用する旧サンプルと、Vue で作った「めしガチャ」の画面確認用プロトタイプがあります。
 
@@ -9,33 +9,42 @@
 ## 旧サンプル
 
 ルートの `index.html` は、エリア・料理ジャンル・予算からホットペッパーグルメ Webサービス API を呼び出す旧サンプルです。
+ジャンル・予算・検索範囲などを選び、3本のスロットリールでお店を抽選する Web アプリです。現在の画面はVue 3と架空のサンプル店舗データで動くフロントエンド試作です。
 
-## 画面の流れ
+## 公開ページ
 
-1. エリアを選択
-2. 料理ジャンルを選択
-3. 予算の目安を選択
-4. API の検索結果を確認し、「条件を変更」から再検索
+画面は [GitHub Pages](https://25yc0102-png.github.io/sotsugyo-project/) で公開しています。現状はVueをCDNから読み込む静的な画面試作で、抽選には架空のサンプルデータを使用します。実在店舗の検索はフロントエンドにまだ接続されていません。
 
-店舗名、ジャンル、最寄り駅、住所、予算、写真、ホットペッパーの店舗詳細リンクを表示します。利用する情報は API の応答に基づきます。
+## ローカルで使う
 
 ### ローカルでの起動
 
 PowerShell でこのフォルダーを開き、設定ファイルを作成します。
+Node.js は不要です。リポジトリを取得後、`meshi-gacha/index.html` をブラウザーで開いてください。Vue本体の読み込みにはインターネット接続が必要です。ローカルHTTPサーバーを使う場合は、リポジトリ直下で次を実行し、`http://localhost:8000/meshi-gacha/` を開きます。
 
 ```powershell
-Copy-Item hotpepper-config.example.js hotpepper-config.js
+py -m http.server 8000
 ```
 
-`hotpepper-config.js` のプレースホルダーを自分の API キーに置き換え、`index.html` をブラウザーで開きます。追加のライブラリやビルド手順はありません。
+画面ではジャンル・予算・好み・範囲を選んで抽選できます。店舗名や住所はすべて画面確認用の架空データです。
 
-### API キーと公開について
+## API キーとプライバシー
 
-`hotpepper-config.js` は `.gitignore` で除外されます。API キーはブラウザーから確認できるため、このサンプルを実キー入りのまま公開・デプロイしないでください。公開環境で利用する場合は、キーをサーバー側で保持する API プロキシを用意してください。
+現在のフロントエンド試作は店舗検索API、位置情報、外部検索サービスに接続せず、APIキーや個人情報も扱いません。旧ローカルAPIサーバー `meshi-gacha/server.ps1` は残っていますが、この試作画面からは利用しません。将来APIを接続する場合、APIキーはフロントエンドに置かずバックエンドで管理してください。
 
 ### API 表記
+## 使用技術とデータ表記
 
-検索結果には「Powered by ホットペッパーグルメ Webサービス」を表示し、API 由来の写真には画像提供元を表示しています。利用時は [公式ガイドライン](https://webservice.recruit.co.jp/doc/hotpepper/guideline.html) と [API リファレンス](https://webservice.recruit.co.jp/doc/hotpepper/reference.html) を確認してください。
+- HTML、CSS、JavaScript
+- 旧ローカル API サーバー: PowerShell スクリプト（現在の画面からは未接続）
+- 店舗情報: [ホットペッパーグルメ Webサービス](https://webservice.recruit.co.jp/)
+- 地名検索: [Photon](https://photon.komoot.io/) / [OpenStreetMap](https://www.openstreetmap.org/copyright)
+
+実データ/APIを接続する際は、ホットペッパーグルメ Webサービスの利用規約と[公式ガイドライン](https://webservice.recruit.co.jp/doc/hotpepper/guideline.html)に従い、必要なクレジットを表示してください。
+
+## GitHub Pages のデプロイ
+
+`main` ブランチの `meshi-gacha/` に変更を push すると、[GitHub Actions](.github/workflows/deploy-meshi-gacha.yml) が Pages に自動デプロイします。GitHub リポジトリの **Settings > Pages** で公開元を **GitHub Actions** に設定してください。
 
 ## リポジトリ構成
 
@@ -44,3 +53,19 @@ Copy-Item hotpepper-config.example.js hotpepper-config.js
 - `hotpepper-config.example.js`: ローカル設定ファイルのひな形
 - `gourmet-nearby/`: 既存のローカルサーバー版アプリ
 - `基本設計書.md`: 制作の基本設計
+```text
+.
+├── .github/workflows/
+│   └── deploy-meshi-gacha.yml  # GitHub Pages へのデプロイ
+├── meshi-gacha/
+│   ├── index.html              # アプリ画面
+│   ├── styles.css              # スタイル
+│   ├── app.js                  # 画面操作・検索・抽選
+│   ├── server.ps1              # ローカル API サーバー
+│   └── README.md               # アプリの起動・利用方法
+├── 基本設計書.md
+├── インフラ基本設計.md
+└── デザインガイドライン.md
+```
+
+設計資料: [基本設計書](基本設計書.md) / [インフラ基本設計書](インフラ基本設計.md) / [デザインガイドライン](デザインガイドライン.md)
