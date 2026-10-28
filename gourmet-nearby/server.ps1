@@ -32,10 +32,26 @@ function Write-JsonResponse {
     $Context.Response.OutputStream.Write($bytes, 0, $bytes.Length)
 }
 
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://127.0.0.1:$port/")
-$listener.Start()
-Write-Host "Nearby Gourmet: http://127.0.0.1:$port/"
+$listener = $null
+for ($candidatePort = $port; $candidatePort -lt ($port + 10); $candidatePort++) {
+    $candidateListener = New-Object System.Net.HttpListener
+    $candidateListener.Prefixes.Add("http://127.0.0.1:$candidatePort/")
+    try {
+        $candidateListener.Start()
+        $listener = $candidateListener
+        $port = $candidatePort
+        break
+    }
+    catch [System.Net.HttpListenerException] {
+        $candidateListener.Close()
+    }
+}
+
+if (-not $listener) {
+    throw 'No available local HTTP port was found between 5180 and 5189.'
+}
+
+Write-Host "どこいく？: http://127.0.0.1:$port/"
 Write-Host 'Press Ctrl+C to stop. The API key stays in server memory only.'
 
 try {
@@ -58,8 +74,21 @@ try {
                     $latitude = [double]::Parse($request.QueryString['lat'], [System.Globalization.CultureInfo]::InvariantCulture)
                     $longitude = [double]::Parse($request.QueryString['lng'], [System.Globalization.CultureInfo]::InvariantCulture)
                     $range = [int]::Parse($request.QueryString['range'], [System.Globalization.CultureInfo]::InvariantCulture)
+                    $genre = $request.QueryString['genre']
+                    $budget = $request.QueryString['budget']
+                    $genreCodes = @{
+                        'izakaya' = 'G001'
+                        'ramen' = 'G013'
+                        'cafe' = 'G014'
+                    }
+                    $budgetCodes = @{
+                        'under3000' = @('B001', 'B002')
+                        '3001to5000' = @('B003', 'B004')
+                        '5001to7000' = @('B005')
+                        'any' = @()
+                    }
 
-                    if ($latitude -lt -90 -or $latitude -gt 90 -or $longitude -lt -180 -or $longitude -gt 180 -or $range -lt 1 -or $range -gt 5) {
+                    if ($latitude -lt -90 -or $latitude -gt 90 -or $longitude -lt -180 -or $longitude -gt 180 -or $range -lt 1 -or $range -gt 5 -or -not $genreCodes.ContainsKey($genre) -or -not $budgetCodes.ContainsKey($budget)) {
                         Write-JsonResponse $context 400 @{ error = 'Invalid coordinates or search range.' }
                         $statusCode = 400
                     }
@@ -69,7 +98,10 @@ try {
                         $lngText = $longitude.ToString('0.######', $culture)
                         $query = 'key=' + [System.Uri]::EscapeDataString($script:apiKey) +
                             '&lat=' + $latText + '&lng=' + $lngText +
-                            '&range=' + $range + '&count=9&format=json&order=4'
+                            '&range=' + $range + '&genre=' + $genreCodes[$genre] + '&count=100&format=json&order=4'
+                        foreach ($budgetCode in $budgetCodes[$budget]) {
+                            $query += '&budget=' + $budgetCode
+                        }
                         $apiUrl = 'http://webservice.recruit.co.jp/hotpepper/gourmet/v1/?' + $query
                         $result = Invoke-RestMethod -Uri $apiUrl -Method Get -TimeoutSec 20
 

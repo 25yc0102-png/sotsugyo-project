@@ -1,168 +1,273 @@
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f8f4">
-  <title>めしガチャ</title>
-  <link rel="icon" href="data:,">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
-</head>
-<body>
-  <div class="page-shell">
-    <header class="site-header">
-      <a class="brand" href="/" aria-label="めしガチャ ホーム">めしガチャ</a>
-      <div class="header-status">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="apiStatus">API未接続</span>
-      </div>
-    </header>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ece5d8">
+    <meta name="description" content="場所や予算、腹具合に合わせて、今日のお店をめしガチャで決めよう。">
+    <title>めしガチャ</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./styles.css">
+    <script
+      src="https://unpkg.com/vue@3.5.44/dist/vue.global.prod.js"
+      integrity="sha384-tORx0bXmMnTC28EYQe1coaGZKSQupXQEYDBNex8xkzJ9iqUoNy9Y+VFBhVxi4kUr"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="page-shell">
+        <header class="site-header">
+          <a class="brand" href="./" aria-label="めしガチャ ホーム">めしガチャ</a>
+          <span class="sample-label">試作版・サンプルデータ</span>
+        </header>
 
-    <main>
-      <section class="question-screen" id="questionScreen" aria-labelledby="questionTitle">
-        <div class="question-heading">
-          <h1 id="questionTitle">ジャンルを選んで</h1>
-          <p id="locationStatus" class="location-status" role="status">現在地を確認しています…</p>
-        </div>
+        <main>
+          <section
+            v-if="screen === 'questions'"
+            class="question-screen"
+            :class="{ 'has-navigation': step > 1 }"
+            aria-labelledby="questionTitle"
+          >
+            <div class="question-heading">
+              <p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span>今日のごはんを決めよう</p>
+              <h1 id="questionTitle">{{ stepTitle }}</h1>
+              <p class="location-status" role="status">{{ locationStatus }}</p>
+            </div>
 
-        <div class="step-progress" aria-label="質問の進行状況">
-          <span id="questionStepLabel">STEP 1 / 3 ・ジャンル</span>
-          <div class="step-lights" aria-hidden="true">
-            <span data-step-light="1" class="is-current"></span>
-            <span data-step-light="2"></span>
-            <span data-step-light="3"></span>
-          </div>
-        </div>
+            <div class="step-progress" aria-label="質問の進行状況">
+              <span>STEP {{ step }} / 5 ・{{ stepName }}</span>
+              <div class="step-lights" aria-hidden="true">
+                <span v-for="number in 5" :key="number" :class="{ 'is-current': number === step, 'is-complete': number < step }"></span>
+              </div>
+            </div>
 
-        <div class="question-panel">
-          <section class="question-step" data-question-step="1" aria-labelledby="genreLegend">
-            <fieldset class="choice-group genre-choice">
-              <legend id="genreLegend">次のお店は？</legend>
-              <div class="genre-options">
-                <button class="genre-option genre-featured" type="button" data-genre="izakaya" aria-pressed="true">
-                  <span class="option-title">居酒屋</span>
+            <div class="question-panel">
+              <section v-if="step === 1" class="question-step" aria-labelledby="locationTitle">
+                <h2 class="step-question-title" id="locationTitle">どのあたりで探す？</h2>
+                <p class="step-description">現在地か、駅名・地名を選べます。位置情報はこの画面を開いている間だけ使います。</p>
+                <button class="location-button" type="button" :disabled="isLocating" @click="useCurrentLocation">
+                  {{ isLocating ? "現在地を確認しています…" : "現在地を使う" }}
                 </button>
-                <div class="genre-secondary">
-                  <button class="genre-option" type="button" data-genre="ramen" aria-pressed="false">ラーメン</button>
-                  <button class="genre-option" type="button" data-genre="cafe" aria-pressed="false">カフェ</button>
+                <p v-if="locationError" class="location-error" role="alert">{{ locationError }}</p>
+                <label class="location-input-label" for="locationQuery">または駅名・地名を入力</label>
+                <input
+                  id="locationQuery"
+                  v-model.trim="locationQuery"
+                  class="location-input"
+                  type="search"
+                  maxlength="100"
+                  autocomplete="off"
+                  placeholder="例：東京駅、新宿区"
+                  @input="selectManualLocation"
+                >
+                <p class="sample-note">試作版では入力した場所を検索条件として表示します。実際の店舗・距離検索にはバックエンド接続が必要です。</p>
+                <div class="question-navigation">
+                  <span></span>
+                  <button class="search-button" type="button" :disabled="!canContinueFromLocation" @click="step = 2">
+                    <span>この場所で進む</span><span class="button-arrow" aria-hidden="true">↗</span>
+                  </button>
                 </div>
-              </div>
-            </fieldset>
+              </section>
+
+              <section v-else-if="step === 2" class="question-step" aria-labelledby="budgetLegend">
+                <fieldset class="choice-group budget-choice">
+                  <legend id="budgetLegend">予算はどれくらい？</legend>
+                  <div class="budget-options">
+                    <button
+                      v-for="option in budgets"
+                      :key="option.id"
+                      type="button"
+                      :aria-pressed="budget === option.id"
+                      @click="budget = option.id; step = 3"
+                    >
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </fieldset>
+              </section>
+
+              <section v-else-if="step === 3" class="question-step" aria-labelledby="appetiteLegend">
+                <fieldset class="choice-group">
+                  <legend id="appetiteLegend">今の腹具合は？</legend>
+                  <div class="budget-options">
+                    <button
+                      v-for="option in appetites"
+                      :key="option.id"
+                      type="button"
+                      :aria-pressed="appetite === option.id"
+                      @click="appetite = option.id; step = 4"
+                    >
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </fieldset>
+              </section>
+
+              <section v-else-if="step === 4" class="question-step" aria-labelledby="genreLegend">
+                <fieldset class="choice-group genre-choice">
+                  <legend id="genreLegend">食べたいジャンルは？（選ばなくてもOK）</legend>
+                  <div class="genre-options">
+                    <button
+                      v-for="option in genres"
+                      :key="option.id"
+                      class="genre-option"
+                      type="button"
+                      :aria-pressed="genre === option.id"
+                      @click="genre = option.id; step = 5"
+                    >
+                      <span class="option-title">{{ option.label }}</span>
+                    </button>
+                  </div>
+                </fieldset>
+                <button class="skip-button" type="button" @click="genre = 'any'; step = 5">ジャンルを指定せずに進む</button>
+              </section>
+
+              <section v-else class="question-step" aria-labelledby="preferencesTitle">
+                <h2 class="step-question-title" id="preferencesTitle">
+                  {{ isIzakaya ? "居酒屋の雰囲気や範囲は？" : "検索する範囲は？" }}
+                </h2>
+
+                <section v-if="isIzakaya" class="izakaya-preferences" aria-label="居酒屋の希望">
+                  <fieldset class="choice-group">
+                    <legend>雰囲気</legend>
+                    <div class="multi-select-options">
+                      <button
+                        v-for="option in moods"
+                        :key="option.id"
+                        type="button"
+                        :aria-pressed="selectedMoods.includes(option.id)"
+                        @click="toggleMood(option.id)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </fieldset>
+                  <fieldset class="choice-group">
+                    <legend>料理・店の種類</legend>
+                    <div class="multi-select-options cuisine-options">
+                      <button
+                        v-for="option in cuisines"
+                        :key="option.id"
+                        type="button"
+                        :aria-pressed="selectedCuisines.includes(option.id)"
+                        @click="toggleCuisine(option.id)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </fieldset>
+                </section>
+
+                <fieldset class="choice-group range-control">
+                  <legend>検索する範囲</legend>
+                  <div class="range-options" role="group" aria-label="検索する範囲">
+                    <button
+                      v-for="option in ranges"
+                      :key="option.meters"
+                      type="button"
+                      :aria-pressed="rangeMeters === option.meters"
+                      @click="rangeMeters = option.meters"
+                    >
+                      {{ option.label }}
+                    </button>
+                  </div>
+                </fieldset>
+                <p class="sample-note">選んだ条件に近い架空のサンプル店舗を抽選します。</p>
+                <div class="question-navigation">
+                  <button class="back-button" type="button" @click="goBack">戻る</button>
+                  <button class="search-button" type="button" :disabled="isSearching" @click="startSearch">
+                    <span>めしガチャを回す</span><span class="button-arrow" aria-hidden="true">↗</span>
+                  </button>
+                </div>
+              </section>
+            </div>
           </section>
 
-          <section class="question-step is-hidden" data-question-step="2" aria-labelledby="budgetLegend">
-            <fieldset class="choice-group budget-choice">
-              <legend id="budgetLegend">予算はどれくらい？</legend>
-              <div class="budget-options">
-                <button type="button" data-budget="under3000" aria-pressed="true">3000円以下</button>
-                <button type="button" data-budget="3001to5000" aria-pressed="false">3001〜5000円</button>
-                <button type="button" data-budget="5001to7000" aria-pressed="false">5001〜7000円</button>
-                <button type="button" data-budget="any" aria-pressed="false">こだわらない</button>
+          <section v-else class="results-section" aria-labelledby="resultsTitle">
+            <div class="results-heading">
+              <h1 id="resultsTitle">運命の3店 <span class="result-count">{{ resultCount }}</span></h1>
+              <div class="results-actions">
+                <button class="back-button" type="button" @click="changeConditions">条件を変える</button>
               </div>
-            </fieldset>
-          </section>
+            </div>
 
-          <section class="question-step is-hidden" data-question-step="3" aria-labelledby="preferencesTitle">
-            <h2 class="step-question-title" id="preferencesTitle">好みを選んで</h2>
-            <section class="izakaya-preferences" id="izakayaPreferences" aria-label="居酒屋の希望">
-              <fieldset class="choice-group">
-                <legend>雰囲気</legend>
-                <div class="multi-select-options">
-                  <button type="button" data-mood="calm" aria-pressed="false">落ち着いた</button>
-                  <button type="button" data-mood="lively" aria-pressed="false">にぎやか</button>
+            <p class="result-context">{{ resultContext }}</p>
+            <p class="sample-note">試作版の架空データです。店名・営業状況・距離などは実在の情報ではありません。</p>
+
+            <div class="slot-machine" :class="{ 'is-spinning': isSpinning }">
+              <div
+                ref="cabinetHost"
+                class="cabinet-stage"
+                role="group"
+                :aria-label="cabinetDescription"
+              >
+                <div v-if="!cabinetReady" class="cabinet-placeholder" aria-hidden="true">
+                  {{ cabinetError ? "3D筐体を表示できません" : "3D筐体を準備しています…" }}
                 </div>
-              </fieldset>
-              <fieldset class="choice-group">
-                <legend>料理・店の種類</legend>
-                <div class="multi-select-options cuisine-options">
-                  <button type="button" data-cuisine="chinese" aria-pressed="false">中華</button>
-                  <button type="button" data-cuisine="yakitori" aria-pressed="false">焼き鳥</button>
-                  <button type="button" data-cuisine="seafood" aria-pressed="false">海鮮</button>
-                  <button type="button" data-cuisine="kushikatsu" aria-pressed="false">串揚げ・串カツ</button>
-                  <button type="button" data-cuisine="washoku" aria-pressed="false">和食</button>
-                </div>
-              </fieldset>
+                <p v-if="resultMessageVisible" class="cabinet-message" role="status">
+                  {{ errorMessage || resultMessage }}
+                </p>
+              </div>
+              <p v-if="cabinetError" class="cabinet-error" role="alert">{{ cabinetError }}</p>
+
+              <div class="machine-controls">
+                <p class="slot-status" role="status">{{ slotStatus }}</p>
+                <button
+                  class="lever-button"
+                  :class="{ 'is-pulling': isPulling }"
+                  type="button"
+                  :disabled="isSearching || isPulling || isSpinning || candidateShops.length === 0"
+                  :aria-label="drawnShops.length ? 'もう一度抽選する' : '抽選を開始する'"
+                  @click="reroll"
+                >
+                  <span class="lever-track" aria-hidden="true">
+                    <span class="lever-arm"><span class="lever-knob"></span></span>
+                  </span>
+                  <span class="lever-caption">{{ drawnShops.length ? "もう一度回す" : "抽選スタート" }}</span>
+                </button>
+              </div>
+            </div>
+
+            <section
+              v-if="detailsVisible"
+              class="shop-details-section"
+              aria-labelledby="shopDetailsTitle"
+            >
+              <h2 id="shopDetailsTitle">当たったお店</h2>
+              <div class="shop-grid" aria-live="polite">
+                <article v-for="shop in drawnShops" :key="shop.id" class="shop-card">
+                  <div class="shop-photo-wrap">
+                    <div class="photo-placeholder" aria-hidden="true">{{ shop.genreLabel }}</div>
+                    <span class="distance-badge">{{ shop.distanceMeters }}m</span>
+                  </div>
+                  <div class="shop-card-body">
+                    <div class="shop-meta">
+                      <span class="genre-label">{{ shop.genreLabel }}</span>
+                      <span class="meta-divider" aria-hidden="true">/</span>
+                      <span>{{ shop.station }}</span>
+                    </div>
+                    <h3 class="shop-name">{{ shop.name }}</h3>
+                    <p class="shop-catch">{{ shop.catch }}</p>
+                    <div class="shop-details">
+                      <div class="shop-detail-line"><span class="detail-symbol" aria-hidden="true">〒</span><span>{{ shop.address }}</span></div>
+                      <div class="shop-detail-line"><span class="detail-symbol" aria-hidden="true">￥</span><span>{{ shop.budgetLabel }}</span></div>
+                      <div class="shop-detail-line"><span class="detail-symbol" aria-hidden="true">↗</span><span>{{ shop.distanceMeters }}m（{{ selectedLocationLabel }}から・サンプル）</span></div>
+                    </div>
+                    <p class="shop-link sample-detail-note">店舗の詳細情報はバックエンド接続後に表示します</p>
+                  </div>
+                </article>
+              </div>
             </section>
-            <fieldset class="choice-group range-control">
-              <legend>検索する範囲</legend>
-              <div class="range-options" role="group" aria-label="検索する範囲">
-                <button type="button" data-range="2" aria-pressed="false">500m</button>
-                <button type="button" data-range="3" aria-pressed="true">1km</button>
-                <button type="button" data-range="4" aria-pressed="false">2km</button>
-                <button type="button" data-range="5" aria-pressed="false">3km</button>
-              </div>
-            </fieldset>
           </section>
+        </main>
 
-          <div class="question-navigation">
-            <button class="back-button is-hidden" id="previousQuestionButton" type="button">戻る</button>
-            <button class="search-button is-hidden" id="searchButton" type="button" disabled>
-              <span>めしガチャを回す</span><span class="button-arrow" aria-hidden="true">↗</span>
-            </button>
-          </div>
-
-          <form id="manualLocationForm" class="manual-location-form">
-            <label for="manualLocationInput">住所・駅名から場所を指定</label>
-            <div class="manual-input-row">
-              <input id="manualLocationInput" name="location" type="search" autocomplete="off" maxlength="100" placeholder="例：東京駅、新宿区" required>
-              <button type="submit" class="manual-search-button" id="manualSearchButton" disabled>この場所を使う</button>
-            </div>
-            <p class="manual-location-note" id="manualLocationNote">地名検索：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>
-            <p class="manual-location-error" id="manualLocationError" role="alert" hidden></p>
-          </form>
-        </div>
-      </section>
-
-      <section class="results-section is-hidden" id="resultsScreen" aria-labelledby="resultsTitle">
-        <div class="results-heading">
-          <div>
-            <h1 id="resultsTitle">運命の3店 <span class="result-count" id="resultCount">--</span></h1>
-          </div>
-          <div class="results-actions">
-            <button class="back-button" id="backToQuestionsButton" type="button">条件を変える</button>
-          </div>
-        </div>
-        <p class="result-context" id="resultContext"></p>
-        <div class="slot-machine" id="slotMachine">
-          <div class="slot-marquee">
-            <div class="slot-lights slot-lights-top" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <div class="slot-marquee-main">
-              <div class="slot-marquee-copy">
-                <p class="slot-marquee-kicker">二軒目、決定。</p>
-                <p class="slot-marquee-title">めしガチャ</p>
-              </div>
-              <button class="lever-button" id="rerollButton" type="button" disabled aria-label="レバーを引いてもう一度抽選">
-                <span class="lever-track" aria-hidden="true"><span class="lever-arm"><span class="lever-knob"></span></span></span>
-                <span class="lever-caption">レバーを引く</span>
-              </button>
-            </div>
-            <div class="slot-lights slot-lights-bottom" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          </div>
-          <div class="slot-reel-window">
-            <div class="slot-reel-labels" aria-hidden="true"><span>1軒目</span><span>2軒目</span><span>3軒目</span></div>
-            <div class="result-message" id="resultMessage" aria-live="polite">
-              <p>リールが回るのを待っています…</p>
-            </div>
-            <div class="slot-reels" id="slotReels" aria-live="polite"></div>
-          </div>
-          <div class="slot-console">
-            <p class="slot-status" id="slotStatus" role="status">レバーを引けば運命の3店が決まる</p>
-          </div>
-        </div>
-        <section class="shop-details-section is-hidden" id="shopDetailsSection" aria-labelledby="shopDetailsTitle">
-          <h2 id="shopDetailsTitle">当たったお店</h2>
-          <div class="shop-grid" id="shopGrid" aria-live="polite"></div>
-        </section>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <a href="https://webservice.recruit.co.jp/" target="_blank" rel="noreferrer">Powered by ホットペッパーグルメ Webサービス</a>
-    </footer>
-  </div>
-</body>
+        <footer class="site-footer">
+          <p>めしガチャ — 画面確認用モック</p>
+        </footer>
+      </div>
+    </div>
+  </body>
 </html>

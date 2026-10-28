@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8f4">
-  <title>近くのお店 | まちめし</title>
+  <title>どこいく？</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,10 +15,7 @@
 <body>
   <div class="page-shell">
     <header class="site-header">
-      <a class="brand" href="/" aria-label="まちめし ホーム">
-        <span class="brand-mark" aria-hidden="true">m.</span>
-        <span class="brand-name">まちめし</span>
-      </a>
+      <a class="brand" href="/" aria-label="どこいく？ ホーム">どこいく？</a>
       <div class="header-status">
         <span class="status-dot" id="statusDot"></span>
         <span id="apiStatus">API未接続</span>
@@ -26,75 +23,99 @@
     </header>
 
     <main>
-      <section class="intro" aria-labelledby="pageTitle">
-        <div class="intro-copy">
-          <p class="eyebrow"><span class="eyebrow-rule"></span> NEARBY, RIGHT NOW</p>
-          <h1 id="pageTitle">近くのお店、<br><span>見つけよう。</span></h1>
-          <p class="intro-note">今いる場所から、今日の一軒へ。</p>
-        </div>
-        <div class="intro-stamp" aria-hidden="true">
-          <span class="stamp-small">GOOD FOOD</span>
-          <span class="stamp-center">近所<br>発見</span>
-          <span class="stamp-small">GOOD MOOD</span>
-        </div>
-      </section>
-
-      <section class="search-panel" aria-label="近くのお店を検索">
-        <div class="search-topline">
-          <div>
-            <p class="section-kicker">01 / SEARCH</p>
-            <h2>どのあたりで食べる？</h2>
-          </div>
-          <span class="privacy-note"><span aria-hidden="true">⌖</span> 位置情報は検索時のみ使用</span>
+      <section class="question-screen" id="questionScreen" aria-labelledby="questionTitle">
+        <div class="question-heading">
+          <h1 id="questionTitle">次のお店は？</h1>
+          <p id="locationStatus" class="location-status" role="status">現在地を確認しています…</p>
         </div>
 
-        <div class="search-controls">
-          <div class="range-control">
-            <span class="control-label">検索する範囲</span>
-            <div class="range-options" role="group" aria-label="検索する範囲">
-              <button type="button" data-range="2" aria-pressed="false">500m</button>
-              <button type="button" data-range="3" aria-pressed="true">1km</button>
-              <button type="button" data-range="4" aria-pressed="false">2km</button>
-              <button type="button" data-range="5" aria-pressed="false">3km</button>
+        <div class="question-panel">
+          <fieldset class="choice-group genre-choice">
+            <legend>ジャンル</legend>
+            <div class="genre-options">
+              <button class="genre-option genre-featured" type="button" data-genre="izakaya" aria-pressed="true">
+                <span class="option-title">居酒屋</span>
+              </button>
+              <div class="genre-secondary">
+                <button class="genre-option" type="button" data-genre="ramen" aria-pressed="false">ラーメン</button>
+                <button class="genre-option" type="button" data-genre="cafe" aria-pressed="false">カフェ</button>
+              </div>
             </div>
-          </div>
-          <button class="search-button" id="searchButton" type="button" disabled>
-            <span>近くのお店を見る</span><span class="button-arrow" aria-hidden="true">↗</span>
-          </button>
-        </div>
+          </fieldset>
 
-        <form id="manualLocationForm" class="manual-location-form">
-          <label for="manualLocationInput">位置情報が使えない場合は、住所・駅名・地名から検索</label>
-          <div class="manual-input-row">
-            <input id="manualLocationInput" name="location" type="search" autocomplete="off" maxlength="100" placeholder="例：東京駅、新宿区" required>
-            <button type="submit" class="manual-search-button" id="manualSearchButton" disabled>
-              この場所から探す <span aria-hidden="true">↗</span>
+          <section class="izakaya-preferences" id="izakayaPreferences" aria-label="居酒屋の希望">
+            <fieldset class="choice-group">
+              <legend>雰囲気</legend>
+              <div class="multi-select-options">
+                <button type="button" data-mood="calm" aria-pressed="false">落ち着いた</button>
+                <button type="button" data-mood="lively" aria-pressed="false">にぎやか</button>
+              </div>
+            </fieldset>
+            <fieldset class="choice-group">
+              <legend>料理・店の種類</legend>
+              <div class="multi-select-options cuisine-options">
+                <button type="button" data-cuisine="chinese" aria-pressed="false">中華</button>
+                <button type="button" data-cuisine="yakitori" aria-pressed="false">焼き鳥</button>
+                <button type="button" data-cuisine="seafood" aria-pressed="false">海鮮</button>
+                <button type="button" data-cuisine="kushikatsu" aria-pressed="false">串揚げ・串カツ</button>
+                <button type="button" data-cuisine="washoku" aria-pressed="false">和食</button>
+              </div>
+            </fieldset>
+          </section>
+
+          <fieldset class="choice-group budget-choice">
+            <legend>予算はどれくらい？</legend>
+            <div class="budget-options">
+              <button type="button" data-budget="under3000" aria-pressed="true">3000円以下</button>
+              <button type="button" data-budget="3001to5000" aria-pressed="false">3001〜5000円</button>
+              <button type="button" data-budget="5001to7000" aria-pressed="false">5001〜7000円</button>
+              <button type="button" data-budget="any" aria-pressed="false">こだわらない</button>
+            </div>
+          </fieldset>
+
+          <div class="question-bottom-row">
+            <fieldset class="choice-group range-control">
+              <legend>検索する範囲</legend>
+              <div class="range-options" role="group" aria-label="検索する範囲">
+                <button type="button" data-range="2" aria-pressed="false">500m</button>
+                <button type="button" data-range="3" aria-pressed="true">1km</button>
+                <button type="button" data-range="4" aria-pressed="false">2km</button>
+                <button type="button" data-range="5" aria-pressed="false">3km</button>
+              </div>
+            </fieldset>
+            <button class="search-button" id="searchButton" type="button" disabled>
+              <span>この条件で探す</span><span class="button-arrow" aria-hidden="true">↗</span>
             </button>
           </div>
-          <p class="manual-location-note" id="manualLocationNote">入力した場所を検索するために使用します。地名検索：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>
-          <p class="manual-location-error" id="manualLocationError" role="alert" hidden></p>
-        </form>
+
+          <form id="manualLocationForm" class="manual-location-form">
+            <label for="manualLocationInput">住所・駅名・地名から探す</label>
+            <div class="manual-input-row">
+              <input id="manualLocationInput" name="location" type="search" autocomplete="off" maxlength="100" placeholder="例：東京駅、新宿区" required>
+              <button type="submit" class="manual-search-button" id="manualSearchButton" disabled>この場所で探す</button>
+            </div>
+            <p class="manual-location-note" id="manualLocationNote">地名検索：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>
+            <p class="manual-location-error" id="manualLocationError" role="alert" hidden></p>
+          </form>
+        </div>
       </section>
 
-      <section class="results-section" aria-labelledby="resultsTitle">
+      <section class="results-section is-hidden" id="resultsScreen" aria-labelledby="resultsTitle">
         <div class="results-heading">
           <div>
-            <p class="section-kicker">02 / AROUND YOU</p>
-            <h2 id="resultsTitle">近くの店 <span class="result-count" id="resultCount">--</span></h2>
+            <h1 id="resultsTitle">近くのお店 <span class="result-count" id="resultCount">--</span></h1>
           </div>
-          <p class="result-context" id="resultContext">位置情報を取得して検索</p>
+          <button class="back-button" id="backToQuestionsButton" type="button">条件を変える</button>
         </div>
-
+        <p class="result-context" id="resultContext"></p>
         <div class="result-message" id="resultMessage" aria-live="polite">
-          <span class="message-mark" aria-hidden="true">m.</span>
-          <p>現在地または住所・駅名から近くのお店を検索できます。</p>
+          <p>近くのお店を探しています…</p>
         </div>
         <div class="shop-grid" id="shopGrid" aria-live="polite"></div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>まちめし <span class="footer-year">/ NEARBY GUIDE</span></span>
       <a href="https://webservice.recruit.co.jp/" target="_blank" rel="noreferrer">Powered by ホットペッパーグルメ Webサービス</a>
     </footer>
   </div>

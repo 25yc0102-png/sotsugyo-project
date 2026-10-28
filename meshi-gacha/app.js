@@ -1,609 +1,476 @@
-const searchButton = document.querySelector("#searchButton");
-const manualLocationForm = document.querySelector("#manualLocationForm");
-const manualLocationInput = document.querySelector("#manualLocationInput");
-const manualSearchButton = document.querySelector("#manualSearchButton");
-const manualLocationError = document.querySelector("#manualLocationError");
-const locationStatus = document.querySelector("#locationStatus");
-const apiStatus = document.querySelector("#apiStatus");
-const statusDot = document.querySelector("#statusDot");
-const questionScreen = document.querySelector("#questionScreen");
-const resultsScreen = document.querySelector("#resultsScreen");
-const slotMachine = document.querySelector("#slotMachine");
-const slotStatus = document.querySelector("#slotStatus");
-const backToQuestionsButton = document.querySelector("#backToQuestionsButton");
-const previousQuestionButton = document.querySelector("#previousQuestionButton");
-const rerollButton = document.querySelector("#rerollButton");
-const questionTitle = document.querySelector("#questionTitle");
-const questionStepLabel = document.querySelector("#questionStepLabel");
-const preferencesTitle = document.querySelector("#preferencesTitle");
-const questionSteps = [...document.querySelectorAll("[data-question-step]")];
-const stepLights = [...document.querySelectorAll("[data-step-light]")];
-const izakayaPreferences = document.querySelector("#izakayaPreferences");
-const resultMessage = document.querySelector("#resultMessage");
-const resultCount = document.querySelector("#resultCount");
-const resultContext = document.querySelector("#resultContext");
-const slotReels = document.querySelector("#slotReels");
-const shopDetailsSection = document.querySelector("#shopDetailsSection");
-const shopGrid = document.querySelector("#shopGrid");
-const rangeButtons = [...document.querySelectorAll("[data-range]")];
-const genreButtons = [...document.querySelectorAll("[data-genre]")];
-const budgetButtons = [...document.querySelectorAll("[data-budget]")];
-const moodButtons = [...document.querySelectorAll("[data-mood]")];
-const cuisineButtons = [...document.querySelectorAll("[data-cuisine]")];
+const { createApp, computed, ref } = Vue;
 
-let apiConfigured = false;
-let isLocating = false;
-let isSearching = false;
-let selectedRange = 3;
-let selectedGenre = "izakaya";
-let selectedBudget = "under3000";
-const selectedMoods = new Set();
-const selectedCuisines = new Set();
-let currentPosition = null;
-let currentQuestionStep = 1;
-let candidatePool = [];
-let previousDrawIds = new Set();
+const genres = [
+  { id: "any", label: "おまかせ" },
+  { id: "izakaya", label: "居酒屋" },
+  { id: "ramen", label: "ラーメン" },
+  { id: "cafe", label: "カフェ" },
+];
 
-function updateSearchControls() {
-  searchButton.disabled = !apiConfigured || isLocating || isSearching;
-  manualSearchButton.disabled = !apiConfigured || isSearching;
-  searchButton.querySelector("span").textContent = isLocating
-    ? "現在地を確認しています"
-    : "めしガチャを回す";
-}
+const budgets = [
+  { id: "cheap", label: "なるべく安く" },
+  { id: "moderate", label: "手頃" },
+  { id: "any", label: "気にしない" },
+];
 
-function setApiState(configured) {
-  apiConfigured = configured;
-  apiStatus.textContent = configured ? "API接続済み" : "API未接続";
-  statusDot.classList.toggle("is-ready", configured);
-  if (!configured) locationStatus.textContent = "サーバー起動時に API キーを設定してください。";
-  updateSearchControls();
-}
+const appetites = [
+  { id: "light", label: "軽めに食べたい" },
+  { id: "normal", label: "ふつうに食べたい" },
+  { id: "hearty", label: "がっつり食べたい" },
+];
 
-function showScreen(screen) {
-  const showResults = screen === "results";
-  questionScreen.classList.toggle("is-hidden", showResults);
-  resultsScreen.classList.toggle("is-hidden", !showResults);
-  window.scrollTo(0, 0);
-}
+const moods = [
+  { id: "calm", label: "落ち着いた" },
+  { id: "lively", label: "にぎやか" },
+];
 
-function getQuestionStepCount() {
-  return 3;
-}
+const cuisines = [
+  { id: "chinese", label: "中華" },
+  { id: "yakitori", label: "焼き鳥" },
+  { id: "seafood", label: "海鮮" },
+  { id: "kushikatsu", label: "串揚げ・串カツ" },
+  { id: "washoku", label: "和食" },
+];
 
-function updateQuestionStep() {
-  const stepCount = getQuestionStepCount();
-  const isIzakaya = selectedGenre === "izakaya";
-  const labels = ["ジャンルを選んで", "予算を決めて", isIzakaya ? "居酒屋の好みは？" : "検索範囲を決めて"];
-  const stepNames = ["ジャンル", "予算", isIzakaya ? "好み" : "範囲"];
-  const isLastStep = currentQuestionStep === stepCount;
+const ranges = [
+  { meters: 500, label: "500m" },
+  { meters: 1000, label: "1km" },
+  { meters: 2000, label: "2km" },
+  { meters: 3000, label: "3km" },
+];
 
-  questionSteps.forEach((step) => {
-    step.classList.toggle("is-hidden", Number(step.dataset.questionStep) !== currentQuestionStep);
-  });
-  questionTitle.textContent = labels[currentQuestionStep - 1];
-  questionStepLabel.textContent = `STEP ${currentQuestionStep} / ${stepCount} ・${stepNames[currentQuestionStep - 1]}`;
-  preferencesTitle.textContent = isIzakaya ? "どんな居酒屋にする？" : "検索範囲を選んで";
-  izakayaPreferences.classList.toggle("is-hidden", !isIzakaya);
-  previousQuestionButton.classList.toggle("is-hidden", currentQuestionStep === 1);
-  searchButton.classList.toggle("is-hidden", !isLastStep);
-  questionScreen.classList.toggle("has-navigation", currentQuestionStep > 1);
-  stepLights.forEach((light) => {
-    const stepNumber = Number(light.dataset.stepLight);
-    light.classList.toggle("is-current", stepNumber === currentQuestionStep);
-    light.classList.toggle("is-complete", stepNumber < currentQuestionStep);
-    light.classList.toggle("is-hidden", stepNumber > stepCount);
-  });
-  window.scrollTo(0, 0);
-}
+const budgetLabels = Object.fromEntries(budgets.map(({ id, label }) => [id, label]));
+const genreLabels = Object.fromEntries(genres.map(({ id, label }) => [id, label]));
+const appetiteLabels = Object.fromEntries(appetites.map(({ id, label }) => [id, label]));
+const allowedMoods = new Set(moods.map(({ id }) => id));
+const allowedCuisines = new Set(cuisines.map(({ id }) => id));
+const allowedAppetites = new Set(appetites.map(({ id }) => id));
+const distanceSamples = [280, 620, 910, 1650, 2100, 2800];
+const mockShops = genres
+  .filter((genre) => genre.id !== "any")
+  .flatMap((genre) =>
+    budgets
+      .filter((budget) => budget.id !== "any")
+      .flatMap((budget) =>
+        appetites.flatMap((appetite, appetiteIndex) =>
+          distanceSamples.map((distanceMeters, distanceIndex) => {
+            const cuisine = ["yakitori", "seafood", "washoku", "chinese", "kushikatsu"][
+              (distanceIndex + appetiteIndex) % 5
+            ];
+            const mood = (distanceIndex + appetiteIndex) % 2 === 0 ? "calm" : "lively";
 
-function startGacha() {
-  if (currentPosition) searchAt(currentPosition);
-  else requestCurrentLocation(true);
-}
+            return {
+              id: `${genre.id}-${budget.id}-${appetite.id}-${distanceIndex + 1}`,
+              name: `${genre.label}サンプル店 ${distanceIndex + 1}`,
+              genreId: genre.id,
+              genreLabel: genre.label,
+              budgetId: budget.id,
+              budgetLabel: budget.id === "cheap" ? "〜3,000円（サンプル）" : "3,000〜5,000円（サンプル）",
+              appetiteId: appetite.id,
+              appetiteLabel: appetite.label,
+              station: "サンプル駅周辺",
+              address: "サンプル住所（架空）",
+              catch: "画面確認用に用意した架空の店舗データです。",
+              distanceMeters,
+              cuisine: genre.id === "izakaya" ? cuisine : null,
+              mood: genre.id === "izakaya" ? mood : null,
+            };
+          }),
+        ),
+      ),
+  );
 
-async function checkApiStatus() {
-  try {
-    const response = await fetch("/api/status", { cache: "no-store" });
-    const status = await response.json();
-    setApiState(Boolean(status.configured));
-  } catch {
-    apiStatus.textContent = "サーバー未接続";
-    locationStatus.textContent = "ローカルサーバーに接続できません。server.ps1 を起動してください。";
-    updateSearchControls();
-  }
-}
+async function searchShops(criteria) {
+  const validCriteria = criteria
+    && ["any", "izakaya", "ramen", "cafe"].includes(criteria.genre)
+    && ["cheap", "moderate", "any"].includes(criteria.budget)
+    && allowedAppetites.has(criteria.appetite)
+    && [500, 1000, 2000, 3000].includes(criteria.rangeMeters)
+    && criteria.location
+    && ["current", "place"].includes(criteria.location.kind)
+    && (criteria.location.kind === "current"
+      ? Number.isFinite(criteria.location.latitude) && Number.isFinite(criteria.location.longitude)
+      : typeof criteria.location.query === "string" && criteria.location.query.trim().length > 0)
+    && Array.isArray(criteria.moods)
+    && criteria.moods.every((mood) => allowedMoods.has(mood))
+    && Array.isArray(criteria.cuisines)
+    && criteria.cuisines.every((cuisine) => allowedCuisines.has(cuisine));
 
-function showMessage(message, kind = "info") {
-  slotReels.replaceChildren();
-  shopGrid.replaceChildren();
-  shopDetailsSection.classList.add("is-hidden");
-  resultMessage.classList.remove("is-hidden");
-  resultMessage.dataset.kind = kind;
-  resultMessage.querySelector("p").textContent = message;
-  resultCount.textContent = "--";
-}
-
-function getDistanceInMeters(shop, origin) {
-  const latitude = Number(shop.lat);
-  const longitude = Number(shop.lng);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-
-  const radians = (degrees) => degrees * Math.PI / 180;
-  const deltaLatitude = radians(latitude - origin.latitude);
-  const deltaLongitude = radians(longitude - origin.longitude);
-  const arc = Math.sin(deltaLatitude / 2) ** 2 +
-    Math.cos(radians(origin.latitude)) * Math.cos(radians(latitude)) *
-    Math.sin(deltaLongitude / 2) ** 2;
-  return 6371000 * 2 * Math.atan2(Math.sqrt(arc), Math.sqrt(1 - arc));
-}
-
-function formatDistance(meters) {
-  if (meters === null) return "距離不明";
-  return meters < 1000 ? `${Math.round(meters / 10) * 10}m` : `${(meters / 1000).toFixed(1)}km`;
-}
-
-const cuisineKeywords = {
-  chinese: ["中華", "中国料理", "餃子", "点心"],
-  yakitori: ["焼き鳥", "焼鳥", "焼きとり", "鶏料理", "鳥料理"],
-  seafood: ["海鮮", "魚介", "鮮魚", "刺身"],
-  kushikatsu: ["串揚げ", "串カツ", "串かつ"],
-  washoku: ["和食", "割烹", "天ぷら", "おでん"],
-};
-
-function isAvailable(value) {
-  if (value === true || value === 1) return true;
-  return /あり|有り|利用可|営業している/.test(String(value || ""));
-}
-
-function getPreferenceScore(shop) {
-  if (selectedGenre !== "izakaya") return 0;
-
-  const searchableText = [
-    shop.name,
-    shop.catch,
-    shop.genre?.name,
-    shop.genre?.catch,
-    shop.sub_genre?.name,
-    shop.sub_genre?.catch,
-  ].filter(Boolean).join(" ");
-  let score = 0;
-
-  for (const cuisine of selectedCuisines) {
-    if (cuisineKeywords[cuisine]?.some((keyword) => searchableText.includes(keyword))) score += 5;
+  if (!validCriteria) {
+    throw new TypeError("検索条件が正しくありません。選択内容を確認してください。");
   }
 
-  if (selectedMoods.has("calm")) {
-    score += [shop.private_room, shop.horigotatsu, shop.tatami, shop.night_view]
-      .filter(isAvailable).length * 2;
-  }
-  if (selectedMoods.has("lively")) {
-    if (Number(shop.party_capacity) >= 20) score += 3;
-    if (isAvailable(shop.free_drink)) score += 2;
-    if (isAvailable(shop.course)) score += 1;
-    if (isAvailable(shop.midnight) || isAvailable(shop.midnight_meal)) score += 1;
-  }
-  return score;
+  const selectedMoods = new Set(criteria.moods);
+  const selectedCuisines = new Set(criteria.cuisines);
+
+  return mockShops
+    .filter((shop) => criteria.genre === "any" || shop.genreId === criteria.genre)
+    .filter((shop) => criteria.budget === "any" || shop.budgetId === criteria.budget)
+    .filter((shop) => shop.appetiteId === criteria.appetite)
+    .filter((shop) => shop.distanceMeters <= criteria.rangeMeters)
+    .map((shop) => ({
+      ...shop,
+      preferenceScore: Number(selectedMoods.has(shop.mood))
+        + Number(selectedCuisines.has(shop.cuisine)),
+    }))
+    .sort((first, second) => second.preferenceScore - first.preferenceScore);
 }
 
-function safeImageUrl(shop) {
-  const candidate = shop.photo?.pc?.m || shop.photo?.pc?.l || shop.photo?.pc?.s;
-  if (!candidate) return "";
-  try {
-    const url = new URL(candidate);
-    return url.protocol === "https:" ? url.href : "";
-  } catch {
-    return "";
-  }
-}
+createApp({
+  setup() {
+    const step = ref(1);
+    const screen = ref("questions");
+    const locationMode = ref("current");
+    const currentLocation = ref(null);
+    const locationQuery = ref("");
+    const locationError = ref("");
+    const isLocating = ref(false);
+    const genre = ref("izakaya");
+    const budget = ref("cheap");
+    const appetite = ref("normal");
+    const rangeMeters = ref(1000);
+    const selectedMoods = ref([]);
+    const selectedCuisines = ref([]);
+    const candidateShops = ref([]);
+    const drawnShops = ref([]);
+    const reelRunning = ref([false, false, false]);
+    const isSearching = ref(false);
+    const isSpinning = ref(false);
+    const isPulling = ref(false);
+    const resultMessage = ref("条件を選んで、ガチャを回してください。");
+    const slotStatus = ref("条件に合うお店を探します");
+    const errorMessage = ref("");
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-function safeShopUrl(shop) {
-  const candidate = shop.urls?.pc;
-  if (!candidate) return "https://www.hotpepper.jp/";
-  try {
-    const url = new URL(candidate);
-    return url.protocol === "https:" && url.hostname.endsWith("hotpepper.jp") ? url.href : "https://www.hotpepper.jp/";
-  } catch {
-    return "https://www.hotpepper.jp/";
-  }
-}
+    const isIzakaya = computed(() => genre.value === "izakaya");
+    const stepTitle = computed(() => {
+      if (step.value === 1) return "お店を探す場所は？";
+      if (step.value === 2) return "予算を決めて";
+      if (step.value === 3) return "腹具合を教えて";
+      if (step.value === 4) return "ジャンルを選んで";
+      return "最後に、好みと範囲を選んで";
+    });
+    const stepName = computed(() => {
+      return ["場所", "予算", "腹具合", "ジャンル", "好み・範囲"][step.value - 1];
+    });
+    const selectedGenreLabel = computed(() => genreLabels[genre.value] ?? "");
+    const selectedBudgetLabel = computed(() => budgetLabels[budget.value] ?? "");
+    const selectedAppetiteLabel = computed(() => appetiteLabels[appetite.value] ?? "");
+    const selectedRangeLabel = computed(
+      () => ranges.find((option) => option.meters === rangeMeters.value)?.label ?? "",
+    );
+    const selectedLocationLabel = computed(() => (
+      locationMode.value === "place" ? locationQuery.value.trim() : "現在地"
+    ));
+    const locationStatus = computed(() => {
+      if (locationMode.value === "current" && currentLocation.value) {
+        return "現在地を取得しました。位置情報はこの画面を開いている間だけ使います。";
+      }
+      if (locationMode.value === "place" && locationQuery.value.trim()) {
+        return `検索地点：「${locationQuery.value.trim()}」`;
+      }
+      return "現在地を使うか、駅名・地名を入力してください。";
+    });
+    const canContinueFromLocation = computed(() => (
+      (locationMode.value === "current" && currentLocation.value !== null)
+      || (locationMode.value === "place" && locationQuery.value.trim().length > 0)
+    ));
+    const searchLocation = computed(() => {
+      if (locationMode.value === "current" && currentLocation.value) {
+        return { kind: "current", ...currentLocation.value };
+      }
+      if (locationMode.value === "place" && locationQuery.value.trim()) {
+        return { kind: "place", query: locationQuery.value.trim() };
+      }
+      return null;
+    });
+    const resultContext = computed(
+      () => `${selectedLocationLabel.value}・${selectedBudgetLabel.value}・${selectedAppetiteLabel.value}・${selectedGenreLabel.value}・${selectedRangeLabel.value}`,
+    );
+    const resultCount = computed(() => String(drawnShops.value.length));
+    const detailsVisible = computed(() => drawnShops.value.length > 0 && !isSpinning.value);
+    const resultMessageVisible = computed(() => drawnShops.value.length === 0);
+    const cabinetDescription = computed(() => {
+      if (drawnShops.value.length === 0) {
+        return `めしガチャの3D筐体。${slotStatus.value}。ドラッグして角度を変えられます。`;
+      }
 
-function addTextLine(container, symbol, text) {
-  if (!text) return;
-  const line = document.createElement("div");
-  line.className = "shop-detail-line";
-  const icon = document.createElement("span");
-  icon.className = "detail-symbol";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = symbol;
-  const value = document.createElement("span");
-  value.textContent = text;
-  line.append(icon, value);
-  container.append(line);
-}
+      const results = drawnShops.value.map((shop, index) => (
+        reelRunning.value[index]
+          ? `${index + 1}本目は抽選中`
+          : `${index + 1}本目は${shop.name}`
+      ));
+      return `めしガチャの3D筐体。${results.join("、")}。ドラッグして角度を変えられます。`;
+    });
+    const cabinetHost = ref(null);
+    const cabinetReady = ref(false);
+    const cabinetError = ref("");
+    let cabinetScene = null;
+    let cabinetModulePromise = null;
+    let cabinetGeneration = 0;
 
-function createShopCard(shop, origin, index) {
-  const article = document.createElement("article");
-  article.className = "shop-card";
-  article.style.animationDelay = `${Math.min(index, 8) * 45}ms`;
+    function toggleSelection(selection, value) {
+      selection.value = selection.value.includes(value)
+        ? selection.value.filter((item) => item !== value)
+        : [...selection.value, value];
+    }
 
-  const photoWrap = document.createElement("div");
-  photoWrap.className = "shop-photo-wrap";
-  const photoUrl = safeImageUrl(shop);
-  if (photoUrl) {
-    const image = document.createElement("img");
-    image.className = "shop-photo";
-    image.src = photoUrl;
-    image.alt = `${shop.name}の店舗写真`;
-    image.loading = "lazy";
-    image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", () => {
-      const placeholder = document.createElement("div");
-      placeholder.className = "photo-placeholder";
-      placeholder.textContent = "PHOTO";
-      image.replaceWith(placeholder);
-    }, { once: true });
-    photoWrap.append(image);
-    const credit = document.createElement("span");
-    credit.className = "photo-credit";
-    credit.textContent = "画像提供：ホットペッパー グルメ";
-    photoWrap.append(credit);
-  } else {
-    const placeholder = document.createElement("div");
-    placeholder.className = "photo-placeholder";
-    placeholder.textContent = "NO PHOTO";
-    photoWrap.append(placeholder);
-  }
+    function toggleMood(value) {
+      toggleSelection(selectedMoods, value);
+    }
 
-  const distance = getDistanceInMeters(shop, origin);
-  const distanceBadge = document.createElement("span");
-  distanceBadge.className = "distance-badge";
-  distanceBadge.textContent = formatDistance(distance);
-  photoWrap.append(distanceBadge);
+    function toggleCuisine(value) {
+      toggleSelection(selectedCuisines, value);
+    }
 
-  const body = document.createElement("div");
-  body.className = "shop-card-body";
+    function selectManualLocation() {
+      locationMode.value = "place";
+      currentLocation.value = null;
+      locationError.value = "";
+    }
 
-  const meta = document.createElement("div");
-  meta.className = "shop-meta";
-  const genre = document.createElement("span");
-  genre.className = "genre-label";
-  genre.textContent = shop.genre?.name || "グルメ";
-  const divider = document.createElement("span");
-  divider.className = "meta-divider";
-  divider.textContent = "/";
-  const station = document.createElement("span");
-  station.textContent = shop.station_name || "近隣エリア";
-  meta.append(genre, divider, station);
+    function useCurrentLocation() {
+      locationError.value = "";
+      if (!navigator.geolocation) {
+        locationError.value = "このブラウザーでは位置情報を利用できません。駅名・地名を入力してください。";
+        return;
+      }
 
-  const name = document.createElement("h3");
-  name.className = "shop-name";
-  name.textContent = shop.name || "店名未掲載";
+      isLocating.value = true;
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          currentLocation.value = {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          };
+          locationMode.value = "current";
+          locationQuery.value = "";
+          isLocating.value = false;
+        },
+        (error) => {
+          locationError.value = error.code === error.PERMISSION_DENIED
+            ? "位置情報が許可されませんでした。駅名・地名を入力して検索できます。"
+            : "現在地を取得できませんでした。駅名・地名を入力して検索できます。";
+          isLocating.value = false;
+        },
+        { enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 },
+      );
+    }
 
-  const catchCopy = document.createElement("p");
-  catchCopy.className = "shop-catch";
-  catchCopy.textContent = shop.catch || shop.genre?.catch || shop.address || "詳細は店舗ページをご確認ください。";
+    function wait(milliseconds) {
+      return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+    }
 
-  const details = document.createElement("div");
-  details.className = "shop-details";
-  addTextLine(details, "〒", shop.address);
-  addTextLine(details, "￥", shop.budget?.average || shop.budget?.name);
-  addTextLine(details, "↗", shop.access);
+    function shuffle(items) {
+      const shuffled = [...items];
+      for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+      }
+      return shuffled;
+    }
 
-  const link = document.createElement("a");
-  link.className = "shop-link";
-  link.href = safeShopUrl(shop);
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "お店の詳細";
-  const arrow = document.createElement("span");
-  arrow.setAttribute("aria-hidden", "true");
-  arrow.textContent = "↗";
-  link.append(arrow);
+    function getShopSymbol(shop) {
+      if (shop.genreId === "ramen") return "麺";
+      if (shop.genreId === "cafe") return "珈";
+      const cuisineSymbols = {
+        chinese: "餃",
+        yakitori: "串",
+        seafood: "魚",
+        kushikatsu: "揚",
+        washoku: "肴",
+      };
+      return cuisineSymbols[shop.cuisine] ?? "酒";
+    }
 
-  body.append(meta, name, catchCopy, details, link);
-  article.append(photoWrap, body);
-  return article;
-}
+    async function syncCabinet() {
+      const generation = cabinetGeneration;
+      if (screen.value !== "results") return;
 
-function createReelCell(shop, origin, index) {
-  const reel = document.createElement("article");
-  reel.className = "slot-reel-cell slot-waiting";
-  reel.style.animationDelay = `${index * 45}ms`;
+      await Vue.nextTick();
+      if (generation !== cabinetGeneration || screen.value !== "results") return;
+      const host = cabinetHost.value;
+      if (!host) return;
 
-  const imageFrame = document.createElement("div");
-  imageFrame.className = "reel-image-frame";
-  const photoUrl = safeImageUrl(shop);
-  if (photoUrl) {
-    const image = document.createElement("img");
-    image.className = "reel-image";
-    image.src = photoUrl;
-    image.alt = "";
-    image.loading = "lazy";
-    image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", () => {
-      const symbol = document.createElement("span");
-      symbol.className = "reel-symbol";
-      symbol.textContent = shop.genre?.name?.slice(0, 1) || "店";
-      image.replaceWith(symbol);
-    }, { once: true });
-    imageFrame.append(image);
-  } else {
-    const symbol = document.createElement("span");
-    symbol.className = "reel-symbol";
-    symbol.textContent = shop.genre?.name?.slice(0, 1) || "店";
-    imageFrame.append(symbol);
-  }
+      try {
+        if (!cabinetScene) {
+          cabinetModulePromise ??= import("./cabinet-3d.js").then((module) => module.createCabinetScene);
+          const createCabinetScene = await cabinetModulePromise;
+          if (generation !== cabinetGeneration || screen.value !== "results") return;
+          if (!cabinetScene) cabinetScene = createCabinetScene(host);
+        }
 
-  const genre = document.createElement("span");
-  genre.className = "reel-genre";
-  genre.textContent = shop.genre?.name || "グルメ";
-
-  const name = document.createElement("h2");
-  name.className = "reel-shop-name";
-  name.textContent = shop.name || "店名未掲載";
-
-  const station = document.createElement("p");
-  station.className = "reel-station";
-  station.textContent = shop.station_name || "近隣のお店";
-
-  const distance = document.createElement("span");
-  distance.className = "reel-distance";
-  distance.textContent = formatDistance(getDistanceInMeters(shop, origin));
-
-  reel.append(imageFrame, genre, name, station, distance);
-  return reel;
-}
-
-function drawThreeShops() {
-  const drawPool = candidatePool.length > 3
-    ? candidatePool.filter(({ id }) => !previousDrawIds.has(id))
-    : candidatePool;
-  const available = drawPool.length >= 3 ? drawPool : candidatePool;
-  const remaining = [...available];
-  const drawn = [];
-
-  while (remaining.length && drawn.length < 3) {
-    const weights = remaining.map(({ score }) => 1 + Math.min(score, 12) * 0.5);
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    let pick = Math.random() * totalWeight;
-    let selectedIndex = remaining.length - 1;
-    for (let index = 0; index < weights.length; index++) {
-      pick -= weights[index];
-      if (pick < 0) {
-        selectedIndex = index;
-        break;
+        cabinetScene.update({
+          shops: drawnShops.value.map((shop) => ({
+            glyph: getShopSymbol(shop),
+            name: shop.name,
+            genreLabel: shop.genreLabel,
+            distanceMeters: shop.distanceMeters,
+          })),
+          running: reelRunning.value,
+          pulling: isPulling.value,
+          reducedMotion,
+        });
+        cabinetReady.value = true;
+        cabinetError.value = "";
+      } catch (error) {
+        console.error("3D筐体の初期化に失敗しました。", error);
+        cabinetError.value = "3D筐体を読み込めませんでした。インターネット接続とWebGL対応ブラウザーを確認してください。";
+        cabinetReady.value = false;
       }
     }
-    drawn.push(remaining.splice(selectedIndex, 1)[0]);
-  }
 
-  previousDrawIds = new Set(drawn.map(({ id }) => id));
-  return drawn;
-}
+    Vue.watch(
+      [screen, drawnShops, reelRunning, isPulling],
+      async ([currentScreen]) => {
+        if (currentScreen !== "results") {
+          cabinetGeneration += 1;
+          cabinetScene?.dispose();
+          cabinetScene = null;
+          cabinetReady.value = false;
+          cabinetError.value = "";
+          return;
+        }
+        await syncCabinet();
+      },
+      { deep: true, flush: "post" },
+    );
 
-async function revealDraw(origin) {
-  const drawn = drawThreeShops();
-  if (!drawn.length) return;
-
-  resultCount.textContent = String(drawn.length);
-  resultMessage.classList.remove("is-hidden");
-  resultMessage.querySelector("p").textContent = "777 がそろうまで…";
-  slotStatus.textContent = "リール停止中！ 目を離さないで";
-  slotMachine.classList.add("is-spinning");
-  rerollButton.disabled = true;
-
-  const reels = drawn.map(({ shop }, index) => createReelCell(shop, origin, index));
-  const detailCards = drawn.map(({ shop }, index) => createShopCard(shop, origin, index));
-  slotReels.replaceChildren(...reels);
-  shopGrid.replaceChildren(...detailCards);
-  shopDetailsSection.classList.add("is-hidden");
-
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const revealInterval = reducedMotion ? 0 : 460;
-  await Promise.all(reels.map((reel, index) => new Promise((resolve) => {
-    window.setTimeout(() => {
-      reel.classList.remove("slot-waiting");
-      reel.classList.add("slot-stop");
-      if (index === 0) resultMessage.classList.add("is-hidden");
-      resolve();
-    }, revealInterval * index);
-  })));
-  if (!reducedMotion) await new Promise((resolve) => window.setTimeout(resolve, 480));
-  shopDetailsSection.classList.remove("is-hidden");
-  slotMachine.classList.remove("is-spinning");
-  slotStatus.textContent = "大当たり！ 次の一軒が決まりました";
-  rerollButton.disabled = false;
-}
-
-async function renderShops(payload, origin) {
-  const shops = payload.results?.shop;
-  const list = Array.isArray(shops) ? shops : shops ? [shops] : [];
-  if (list.length === 0) {
-    showMessage("この範囲ではお店が見つかりませんでした。距離を広げてもう一度検索してください。");
-    resultCount.textContent = "0";
-    slotMachine.classList.remove("is-spinning");
-    slotStatus.textContent = "ハズレ… 条件を変えて再チャレンジ";
-    rerollButton.disabled = true;
-    return;
-  }
-
-  candidatePool = list
-    .map((shop, index) => ({ shop, index, id: shop.id || `${shop.name || "shop"}-${index}`, score: getPreferenceScore(shop) }))
-    .sort((first, second) => second.score - first.score || first.index - second.index)
-    .slice(0, 40);
-  previousDrawIds = new Set();
-  await revealDraw(origin);
-}
-
-async function searchAt(origin) {
-  if (!apiConfigured) {
-    showMessage("サーバー起動時にAPIキーを設定してから検索してください。", "error");
-    return;
-  }
-
-  currentPosition = origin;
-  isSearching = true;
-  rerollButton.disabled = true;
-  slotMachine.classList.add("is-spinning");
-  slotStatus.textContent = "候補を集めています…";
-  updateSearchControls();
-  showScreen("results");
-  const rangeLabel = rangeButtons.find((button) => Number(button.dataset.range) === selectedRange)?.textContent || "1km";
-  const selectedPreferenceLabels = [
-    ...moodButtons.filter((button) => selectedMoods.has(button.dataset.mood)).map((button) => button.textContent),
-    ...cuisineButtons.filter((button) => selectedCuisines.has(button.dataset.cuisine)).map((button) => button.textContent),
-  ];
-  resultContext.textContent = [origin.label || "現在地", rangeLabel, ...selectedPreferenceLabels].join("・");
-  showMessage("近くのお店を探しています…");
-
-  try {
-    const parameters = new URLSearchParams({
-      lat: String(origin.latitude),
-      lng: String(origin.longitude),
-      range: String(selectedRange),
-      genre: selectedGenre,
-      budget: selectedBudget,
+    Vue.onBeforeUnmount(() => {
+      cabinetGeneration += 1;
+      cabinetScene?.dispose();
     });
-    const response = await fetch(`/api/search?${parameters}`, { cache: "no-store" });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "検索に失敗しました。");
-    await renderShops(payload, origin);
-  } catch (error) {
-    showMessage(error.message || "検索に失敗しました。", "error");
-    slotMachine.classList.remove("is-spinning");
-    slotStatus.textContent = "エラー発生。条件を確認してください";
-    rerollButton.disabled = true;
-  } finally {
-    isSearching = false;
-    updateSearchControls();
-  }
-}
 
-function requestCurrentLocation(searchWhenReady = false) {
-  if (!navigator.geolocation) {
-    locationStatus.textContent = "このブラウザーでは位置情報を利用できません。住所や駅名で検索してください。";
-    return;
-  }
+    async function revealDraw() {
+      const previousIds = new Set(drawnShops.value.map((shop) => shop.id));
+      const freshCandidates = candidateShops.value.filter((shop) => !previousIds.has(shop.id));
+      const pool = freshCandidates.length >= 3 ? freshCandidates : candidateShops.value;
+      drawnShops.value = shuffle(pool).slice(0, 3);
+      reelRunning.value = drawnShops.value.map(() => true);
+      isSpinning.value = true;
+      resultMessage.value = "リールを回しています…";
+      slotStatus.value = "リールが回転中です";
 
-  isLocating = true;
-  locationStatus.textContent = "現在地を確認しています…";
-  updateSearchControls();
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      currentPosition = { latitude: position.coords.latitude, longitude: position.coords.longitude, label: "現在地" };
-      isLocating = false;
-      locationStatus.textContent = "現在地を取得しました。";
-      updateSearchControls();
-      if (searchWhenReady) searchAt(currentPosition);
-    },
-    (error) => {
-      isLocating = false;
-      const message = error.code === error.PERMISSION_DENIED
-        ? "位置情報が許可されていません。住所や駅名から検索できます。"
-        : "現在地を取得できませんでした。住所や駅名から検索できます。";
-      locationStatus.textContent = message;
-      updateSearchControls();
-    },
-    { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 },
-  );
-}
+      for (let index = 0; index < drawnShops.value.length; index += 1) {
+        if (!reducedMotion) await wait([760, 600, 600][index]);
+        reelRunning.value[index] = false;
+      }
 
-manualLocationForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  manualLocationError.hidden = true;
-  manualSearchButton.disabled = true;
-  manualSearchButton.textContent = "場所を検索しています…";
-
-  try {
-    const query = manualLocationInput.value.trim();
-    const parameters = new URLSearchParams({ q: query, limit: "1" });
-    const response = await fetch(`https://photon.komoot.io/api/?${parameters}`, { cache: "no-store" });
-    if (!response.ok) throw new Error("場所を検索できませんでした。少し時間をおいて再度お試しください。");
-    const payload = await response.json();
-    const feature = payload.features?.[0];
-    const coordinates = feature?.geometry?.coordinates;
-    if (!Array.isArray(coordinates) || coordinates.length < 2) {
-      throw new Error("場所が見つかりませんでした。駅名や市区町村名でお試しください。");
+      isSpinning.value = false;
+      reelRunning.value = [false, false, false];
+      slotStatus.value = drawnShops.value.length === 3
+        ? "抽選結果がそろいました"
+        : `条件に合う候補は${drawnShops.value.length}店でした。範囲を広げてみてください`;
     }
 
-    const properties = feature.properties || {};
-    const label = [properties.name, properties.city, properties.state]
-      .filter((value, index, values) => value && values.indexOf(value) === index)
-      .join("・") || query;
-    currentPosition = { latitude: Number(coordinates[1]), longitude: Number(coordinates[0]), label };
-    locationStatus.textContent = `${label} を検索地点に設定しました。`;
-  } catch (error) {
-    manualLocationError.textContent = error.message || "場所を検索できませんでした。";
-    manualLocationError.hidden = false;
-  } finally {
-    manualSearchButton.textContent = "この場所を使う";
-    updateSearchControls();
-  }
-});
+    async function startSearch() {
+      if (isSearching.value) return;
 
-rangeButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    selectedRange = Number(button.dataset.range);
-    rangeButtons.forEach((option) => option.setAttribute("aria-pressed", String(option === button)));
-  });
-});
+      isSearching.value = true;
+      errorMessage.value = "";
+      screen.value = "results";
+      candidateShops.value = [];
+      drawnShops.value = [];
+      resultMessage.value = "サンプルデータから候補を集めています…";
+      slotStatus.value = "候補を集めています…";
 
-genreButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    selectedGenre = button.dataset.genre;
-    genreButtons.forEach((option) => option.setAttribute("aria-pressed", String(option === button)));
-    currentQuestionStep = 2;
-    updateQuestionStep();
-  });
-});
+      try {
+        candidateShops.value = await searchShops({
+          location: searchLocation.value,
+          genre: genre.value,
+          budget: budget.value,
+          appetite: appetite.value,
+          rangeMeters: rangeMeters.value,
+          moods: selectedMoods.value,
+          cuisines: selectedCuisines.value,
+        });
 
-budgetButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    selectedBudget = button.dataset.budget;
-    budgetButtons.forEach((option) => option.setAttribute("aria-pressed", String(option === button)));
-    currentQuestionStep = 3;
-    updateQuestionStep();
-  });
-});
+        if (candidateShops.value.length === 0) {
+          resultMessage.value = "条件に合うお店がありません。検索範囲を広げてみてください。";
+          slotStatus.value = "候補が見つかりませんでした";
+          return;
+        }
 
-function togglePreference(button, selectedSet, valueKey) {
-  const value = button.dataset[valueKey];
-  if (selectedSet.has(value)) selectedSet.delete(value);
-  else selectedSet.add(value);
-  button.setAttribute("aria-pressed", String(selectedSet.has(value)));
-}
+        await revealDraw();
+      } catch (error) {
+        errorMessage.value = error instanceof Error
+          ? error.message
+          : "検索に失敗しました。条件を確認して、もう一度お試しください。";
+        resultMessage.value = errorMessage.value;
+        slotStatus.value = "検索に失敗しました";
+      } finally {
+        isSearching.value = false;
+      }
+    }
 
-moodButtons.forEach((button) => button.addEventListener("click", () => {
-  togglePreference(button, selectedMoods, "mood");
-}));
+    async function reroll() {
+      if (isSearching.value || isPulling.value || isSpinning.value || candidateShops.value.length === 0) return;
 
-cuisineButtons.forEach((button) => button.addEventListener("click", () => {
-  togglePreference(button, selectedCuisines, "cuisine");
-}));
+      isPulling.value = true;
+      slotStatus.value = "ガコン！ レバー作動、リール回転中！";
+      if (!reducedMotion) await wait(440);
+      isPulling.value = false;
+      await revealDraw();
+    }
 
-previousQuestionButton.addEventListener("click", () => {
-  currentQuestionStep = Math.max(currentQuestionStep - 1, 1);
-  updateQuestionStep();
-});
-searchButton.addEventListener("click", startGacha);
-rerollButton.addEventListener("click", async () => {
-  if (!candidatePool.length || isSearching) return;
-  rerollButton.disabled = true;
-  rerollButton.classList.add("is-pulling");
-  slotMachine.classList.add("is-spinning");
-  slotStatus.textContent = "ガコン！ レバー作動、リール回転中！";
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  await new Promise((resolve) => window.setTimeout(resolve, reducedMotion ? 0 : 440));
-  rerollButton.classList.remove("is-pulling");
-  await revealDraw(currentPosition);
-});
-backToQuestionsButton.addEventListener("click", () => {
-  currentQuestionStep = 1;
-  updateQuestionStep();
-  showScreen("questions");
-});
-updateQuestionStep();
-checkApiStatus().then(() => {
-  if (apiConfigured) requestCurrentLocation();
-});
+    function goBack() {
+      step.value = Math.max(1, step.value - 1);
+    }
+
+    function changeConditions() {
+      step.value = 1;
+      screen.value = "questions";
+      errorMessage.value = "";
+    }
+
+    return {
+      appetite,
+      appetites,
+      budgets,
+      candidateShops,
+      cabinetDescription,
+      cabinetError,
+      cabinetHost,
+      cabinetReady,
+      cuisines,
+      canContinueFromLocation,
+      detailsVisible,
+      drawnShops,
+      errorMessage,
+      genre,
+      genres,
+      isIzakaya,
+      isLocating,
+      isPulling,
+      isSearching,
+      isSpinning,
+      locationError,
+      locationQuery,
+      locationStatus,
+      moods,
+      rangeMeters,
+      ranges,
+      reelRunning,
+      resultContext,
+      resultCount,
+      resultMessage,
+      resultMessageVisible,
+      screen,
+      selectedLocationLabel,
+      selectedCuisines,
+      selectedMoods,
+      slotStatus,
+      step,
+      stepName,
+      stepTitle,
+      selectManualLocation,
+      startSearch,
+      toggleCuisine,
+      toggleMood,
+      useCurrentLocation,
+      goBack,
+      changeConditions,
+      reroll,
+    };
+  },
+}).mount("#app");
