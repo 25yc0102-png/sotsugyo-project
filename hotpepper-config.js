@@ -1,1 +1,0 @@
-window.HOTPEPPER_API_KEY = "37898f3f062271ac";
