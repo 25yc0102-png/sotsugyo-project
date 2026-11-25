@@ -24,7 +24,6 @@
       <div class="page-shell">
         <header class="site-header">
           <a class="brand" href="./" aria-label="めしガチャ ホーム">めしガチャ</a>
-          <span class="sample-label">試作版・サンプルデータ</span>
         </header>
 
         <main>
@@ -66,7 +65,6 @@
                   placeholder="例：東京駅、新宿区"
                   @input="selectManualLocation"
                 >
-                <p class="sample-note">試作版では入力した場所を検索条件として表示します。実際の店舗・距離検索にはバックエンド接続が必要です。</p>
                 <div class="question-navigation">
                   <span></span>
                   <button class="search-button" type="button" :disabled="!canContinueFromLocation" @click="step = 2">
@@ -78,7 +76,7 @@
               <section v-else-if="step === 2" class="question-step" aria-labelledby="budgetLegend">
                 <fieldset class="choice-group budget-choice">
                   <legend id="budgetLegend">予算はどれくらい？</legend>
-                  <div class="budget-options">
+                  <div class="budget-options three-options">
                     <button
                       v-for="option in budgets"
                       :key="option.id"
@@ -90,12 +88,16 @@
                     </button>
                   </div>
                 </fieldset>
+                <div class="question-navigation">
+                  <button class="back-button" type="button" @click="goBack">戻る</button>
+                  <span></span>
+                </div>
               </section>
 
               <section v-else-if="step === 3" class="question-step" aria-labelledby="appetiteLegend">
                 <fieldset class="choice-group">
                   <legend id="appetiteLegend">今の腹具合は？</legend>
-                  <div class="budget-options">
+                  <div class="budget-options three-options">
                     <button
                       v-for="option in appetites"
                       :key="option.id"
@@ -107,6 +109,10 @@
                     </button>
                   </div>
                 </fieldset>
+                <div class="question-navigation">
+                  <button class="back-button" type="button" @click="goBack">戻る</button>
+                  <span></span>
+                </div>
               </section>
 
               <section v-else-if="step === 4" class="question-step" aria-labelledby="genreLegend">
@@ -126,6 +132,10 @@
                   </div>
                 </fieldset>
                 <button class="skip-button" type="button" @click="genre = 'any'; step = 5">ジャンルを指定せずに進む</button>
+                <div class="question-navigation">
+                  <button class="back-button" type="button" @click="goBack">戻る</button>
+                  <span></span>
+                </div>
               </section>
 
               <section v-else class="question-step" aria-labelledby="preferencesTitle">
@@ -134,6 +144,9 @@
                 </h2>
 
                 <section v-if="isIzakaya" class="izakaya-preferences" aria-label="居酒屋の希望">
+                  <p class="optional-note">
+                    好みは選ばなくてもガチャを回せます。気になる雰囲気や料理があれば選んでください。
+                  </p>
                   <fieldset class="choice-group">
                     <legend>雰囲気</legend>
                     <div class="multi-select-options">
@@ -178,7 +191,6 @@
                     </button>
                   </div>
                 </fieldset>
-                <p class="sample-note">選んだ条件に近い架空のサンプル店舗を抽選します。</p>
                 <div class="question-navigation">
                   <button class="back-button" type="button" @click="goBack">戻る</button>
                   <button class="search-button" type="button" :disabled="isSearching" @click="startSearch">
@@ -198,8 +210,6 @@
             </div>
 
             <p class="result-context">{{ resultContext }}</p>
-            <p class="sample-note">試作版の架空データです。店名・営業状況・距離などは実在の情報ではありません。</p>
-
             <div class="slot-machine" :class="{ 'is-spinning': isSpinning }">
               <div
                 ref="cabinetHost"
@@ -268,13 +278,7 @@
         </main>
 
         <footer class="site-footer">
-          <p>めしガチャ — 画面確認用モック</p>
-        </footer>
-      </div>
-    </div>
-  </body>
-        <footer class="site-footer">
-          <p>めしガチャ — 画面確認用モック</p>
+          <p>めしガチャ</p>
         </footer>
       </div>
     </div>
