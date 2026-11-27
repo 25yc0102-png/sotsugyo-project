@@ -1884,3 +1884,88 @@ h1 span {
     transition-duration: 0.01ms !important;
   }
 }
+
+.slot-machine {
+  padding: clamp(6px, 1.2vw, 14px);
+  border-color: var(--slot-chrome);
+  background: linear-gradient(145deg, #342523, #171013 55%, #3b2921);
+}
+
+.cabinet-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(360px, 62vw, 680px);
+  overflow: hidden;
+  border: 1px solid #d1aa58;
+  border-radius: 4px;
+  background: #171013;
+  touch-action: pan-y;
+}
+
+.cabinet-stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cabinet-placeholder,
+.cabinet-message {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--slot-cream);
+  text-align: center;
+}
+
+.cabinet-placeholder {
+  inset: 0;
+  padding: 24px;
+  background: #171013;
+  font-weight: 700;
+}
+
+.cabinet-message {
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid #d1aa58;
+  border-radius: 4px;
+  background: #171013e8;
+}
+
+.cabinet-error {
+  margin: 10px 4px 0;
+  color: #ffe0a0;
+  font-size: 13px;
+}
+
+.machine-controls {
+  min-height: 88px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.machine-controls .slot-status {
+  color: var(--slot-cream);
+  text-shadow: none;
+}
+
+@media (max-width: 560px) {
+  .cabinet-stage {
+    height: clamp(360px, 100vw, 520px);
+  }
+
+  .machine-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
